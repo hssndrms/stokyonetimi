@@ -43,7 +43,7 @@ Projeyi kendi bilgisayarınızda çalıştırıp geliştirmek için aşağıdaki
 3.  **+ New query**'ye tıklayın ve bu projedeki `pages/SetupPage.tsx` dosyasında bulunan `SETUP_SQL` içeriğinin tamamını kopyalayıp yapıştırın.
 4.  Sağ alttaki **RUN** butonuna tıklayarak veritabanı şemasını, tabloları ve fonksiyonları oluşturun.
 5.  Kurulum tamamlandıktan sonra, sol menüden **Project Settings > API** bölümüne gidin.
-6.  `Project URL` ve `Project API Keys` altındaki `anon` `public` anahtarını not alın. Bu bilgilere bir sonraki adımda ihtiyacınız olacak.
+6.  `Project URL` ve `Project API Keys` altındaki `anon` `public` anahtarını not alın. Uygulamayı ilk çalıştırdığınızda bu bilgilere ihtiyacınız olacak.
 
 ### 3. Projeyi Bilgisayara İndirme ve Ayarlama
 
@@ -69,20 +69,13 @@ Aşağıda işletim sisteminize uygun adımları takip edebilirsiniz.
     npm install
     ```
 
-4.  **Ortam Değişkenleri Dosyasını Oluşturun (`.env`):**
-    -   Komut İstemi'nde, projenin ana dizinindeyken şu komutu çalıştırın:
-        ```bash
-        copy NUL .env
-        ```
-    -   Bu komut, `.env` adında boş bir dosya oluşturacaktır. Dosyayı Visual Studio Code veya Not Defteri gibi bir metin düzenleyici ile açın.
-
-5.  **Uygulamayı Çalıştırın:**
-    -   Uygulamayı çalıştırdığınızda, sizden Supabase URL ve Anon Key bilgilerini isteyecektir. Bu bilgileri web arayüzü üzerinden girerek kurulumu tamamlayabilirsiniz.
-
-6.  **Geliştirme Sunucusunu Başlatın:**
+4.  **Geliştirme Sunucusunu Başlatın:**
     ```bash
     npm run dev
     ```
+
+5.  **Kurulumu Tamamlayın:**
+    -   Uygulama tarayıcıda açıldığında, sizden Supabase URL ve Anon Key bilgilerinizi girmenizi isteyecektir. Bu bilgileri web arayüzü üzerinden girerek kurulumu tamamlayabilirsiniz.
 
 ---
 
@@ -104,43 +97,130 @@ Aşağıda işletim sisteminize uygun adımları takip edebilirsiniz.
     npm install
     ```
 
-4.  **Ortam Değişkenleri Dosyasını Oluşturun (`.env`):**
-    -   Terminal'de, projenin ana dizinindeyken şu komutu çalıştırın:
-        ```bash
-        touch .env
-        ```
-    -   Bu komut, `.env` adında boş bir dosya oluşturacaktır.
-
-5.  **Uygulamayı Çalıştırın:**
-    -   Uygulamayı çalıştırdığınızda, sizden Supabase URL ve Anon Key bilgilerini isteyecektir. Bu bilgileri web arayüzü üzerinden girerek kurulumu tamamlayabilirsiniz.
-
-
-6.  **Geliştirme Sunucusunu Başlatın:**
+4.  **Geliştirme Sunucusunu Başlatın:**
     ```bash
     npm run dev
     ```
+
+5.  **Kurulumu Tamamlayın:**
+    -   Uygulama tarayıcıda açıldığında, sizden Supabase URL ve Anon Key bilgilerinizi isteyecektir. Bu bilgileri web arayüzü üzerinden girerek kurulumu tamamlayabilirsiniz.
+
 
 ---
 ## 📦 Derleme ve Dağıtım (Build & Deployment)
 
 Uygulamanızı tamamladığınızda, kullanıcılarınızın erişebilmesi için canlıya almanız gerekir.
 
-### Derleme Adımı
+### 1. Derleme Adımı
 
-1.  Projenin üretim versiyonunu oluşturmak için aşağıdaki komutu çalıştırın:
+Projenin üretim versiyonunu oluşturmak için aşağıdaki komutu çalıştırın:
+```bash
+npm run build
+```
+Bu komut, projenin optimize edilmiş, sıkıştırılmış ve tarayıcıların doğrudan çalıştırabileceği statik dosyaları (`index.html`, CSS, JavaScript dosyaları vb.) içeren bir `dist` klasörü oluşturacaktır.
+
+Oluşturulan `dist` klasörünün içeriği artık bir web sunucusunda barındırılmaya hazırdır.
+
+### 2. Dağıtım Yöntemleri
+
+#### Yöntem 1: Statik Hosting Servisleri (Netlify, Vercel vb.)
+
+En kolay ve hızlı yöntemdir. [Netlify](https://www.netlify.com/), [Vercel](https://vercel.com/), [GitHub Pages](https://pages.github.com/) gibi modern hosting servisleri, `dist` klasörünü sürükleyip bırakarak veya bir Git reposuna bağlayarak projenizi saniyeler içinde SSL sertifikası dahil olmak üzere yayınlamanıza olanak tanır.
+
+#### Yöntem 2: Node.js ile Yerel Sunucu Başlatma (Hızlı Test)
+
+Bu, derlenmiş uygulamanızı canlı ortama taşımadan önce test etmenin en hızlı ve en yaygın yollarından biridir. Adımlar Windows ve macOS için aynıdır.
+
+1.  **Serve Paketini Yükleyin:**
+    Eğer bilgisayarınızda `serve` paketi yüklü değilse, Terminal veya Komut İstemi'nde aşağıdaki komutla global olarak yükleyin:
     ```bash
-    npm run build
+    npm install -g serve
     ```
-2.  Bu komut, projenin optimize edilmiş, sıkıştırılmış ve tarayıcıların doğrudan çalıştırabileceği statik dosyaları (`index.html`, CSS, JavaScript dosyaları vb.) içeren bir `dist` klasörü oluşturacaktır.
 
-### Dağıtım Adımı
+2.  **Sunucuyu Başlatın:**
+    Projenizin ana dizininde (`dist` klasörünün bulunduğu yerde), aşağıdaki komutu çalıştırın:
+    ```bash
+    serve -s dist
+    ```
+    -   `-s`: Bu bayrak, projenin tek sayfa uygulaması (Single Page Application - SPA) olduğunu belirtir. Bu sayede, `site.com/urunler` gibi alt sayfalara doğrudan gidildiğinde sayfanın düzgün yüklenmesini sağlar.
+    -   `dist`: Sunucunun hangi klasördeki dosyaları sunacağını belirtir.
 
-Oluşturulan `dist` klasörünün içeriği artık bir web sunucusunda barındırılmaya hazırdır. Bu dosyaları aşağıdaki gibi platformlara kolayca yükleyebilirsiniz:
+3.  **Uygulamayı Açın:**
+    Terminalde size verilen adresi (genellikle `http://localhost:3000`) tarayıcınızda açarak uygulamanızı görüntüleyebilirsiniz.
 
--   **Statik Hosting Servisleri (Önerilen):** [Netlify](https://www.netlify.com/), [Vercel](https://vercel.com/), [GitHub Pages](https://pages.github.com/) gibi servisler, `dist` klasörünü sürükleyip bırakarak veya bir Git reposuna bağlayarak projenizi saniyeler içinde yayınlamanıza olanak tanır.
--   **Gelenşeksel Sunucular:** `dist` klasörünün içindeki tüm dosyaları Nginx veya Apache gibi bir web sunucusunun hizmet verdiği dizine kopyalayarak da dağıtım yapabilirsiniz.
+#### Yöntem 3: Yerel HTTPS Test Sunucusu
 
-Uygulama, `dist` klasörü içindeki `index.html` dosyası üzerinden çalışacaktır.
+Uygulamanızı canlıya almadan önce güvenli bir ortamda (HTTPS) test etmek için bu yöntemi kullanabilirsiniz. Bu adımlar hem **Windows** hem de **macOS** için geçerlidir.
+
+1.  **Serve Paketini Yükleyin:**
+    Eğer bilgisayarınızda `serve` paketi yüklü değilse, Terminal veya Komut İstemi'nde aşağıdaki komutla global olarak yükleyin:
+    ```bash
+    npm install -g serve
+    ```
+
+2.  **Sunucuyu Başlatın:**
+    Projenizin ana dizininde, aşağıdaki komutu çalıştırarak `dist` klasörünü HTTPS üzerinden sunun:
+    ```bash
+    serve -s -S dist -l 5000
+    ```
+    -   `-s`: Tek sayfa uygulamaları (SPA) için tüm istekleri `index.html`'e yönlendirir.
+    -   `-S`: SSL (HTTPS) modunu aktif eder ve otomatik olarak geçici bir sertifika oluşturur.
+    -   `-l 5000`: Sunucunun `5000` portunda çalışmasını sağlar.
+
+3.  **Tarayıcıda Açın:**
+    Tarayıcınızda `https://localhost:5000` adresine gidin. Tarayıcı, sertifikanın "kendinden imzalı" (self-signed) olması nedeniyle bir güvenlik uyarısı gösterecektir. Bu normaldir. "Gelişmiş" veya "Yine de devam et" seçeneğine tıklayarak siteyi görüntüleyebilirsiniz.
+
+#### Yöntem 4: Windows Sunucusu (IIS)
+
+Uygulamayı bir Windows sunucusunda IIS (Internet Information Services) üzerinden yayınlamak için aşağıdaki adımları izleyin.
+
+**Ön Gereksinimler:**
+-   Sunucuda IIS rolünün kurulu olması.
+-   [URL Rewrite Module](https://www.iis.net/downloads/microsoft/url-rewrite)'ün IIS üzerine yüklenmiş olması. Bu modül, tek sayfa uygulamalarının (SPA) yönlendirme (routing) mekanizmasının düzgün çalışması için kritiktir.
+
+**Adımlar:**
+
+1.  **Projenizi Derleyin:**
+    Yerel makinenizde `npm run build` komutunu çalıştırarak `dist` klasörünü oluşturun.
+
+2.  **Dosyaları Sunucuya Kopyalayın:**
+    `dist` klasörünün **içindeki tüm dosyaları** (klasörün kendisini değil) sunucunuzda siteyi barındırmak istediğiniz bir klasöre kopyalayın (örn: `C:\inetpub\wwwroot\stok-uygulamasi`).
+
+3.  **IIS'te Yeni Bir Site Oluşturun:**
+    -   IIS Yöneticisi'ni açın.
+    -   Sol taraftaki "Connections" panelinde sunucu adınızı genişletin, "Sites" üzerine sağ tıklayın ve "Add Website..." seçeneğini seçin.
+    -   **Site name:** Uygulamanıza bir isim verin (örn: `Stok Takip`).
+    -   **Physical path:** Dosyaları kopyaladığınız klasörün yolunu seçin (örn: `C:\inetpub\wwwroot\stok-uygulamasi`).
+    -   **Binding:** Sitenin çalışacağı portu ve isteğe bağlı olarak bir hostname belirleyin.
+
+4.  **`web.config` Dosyasını Oluşturun:**
+    React gibi tek sayfa uygulamaları, sayfa yönlendirmelerini tarayıcı tarafında yönetir. Kullanıcı `site.com/urunler` gibi bir adrese doğrudan gittiğinde, sunucunun bu isteği alıp ana `index.html` dosyasına yönlendirmesi gerekir. IIS'te bu işlemi `web.config` dosyası ve URL Rewrite modülü yapar.
+
+    -   Dosyaları kopyaladığınız klasörün (`C:\inetpub\wwwroot\stok-uygulamasi`) içine `web.config` adında yeni bir dosya oluşturun.
+    -   Dosyayı bir metin düzenleyici ile açın ve aşağıdaki içeriği içine yapıştırın:
+
+    ```xml
+    <?xml version="1.0" encoding="UTF-8"?>
+    <configuration>
+      <system.webServer>
+        <rewrite>
+          <rules>
+            <rule name="React SPA" stopProcessing="true">
+              <match url=".*" />
+              <conditions logicalGrouping="MatchAll">
+                <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
+                <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
+              </conditions>
+              <action type="Rewrite" url="/" />
+            </rule>
+          </rules>
+        </rewrite>
+      </system.webServer>
+    </configuration>
+    ```
+
+5.  **Siteyi Ziyaret Edin:**
+    Tarayıcınızdan sitenin adresine giderek uygulamanızın çalıştığını doğrulayın. Artık hem ana sayfaya hem de alt sayfalara (örn: `/urunler`) doğrudan erişebiliyor olmalısınız.
 
 ---
 
@@ -159,7 +239,6 @@ Uygulama, `dist` klasörü içindeki `index.html` dosyası üzerinden çalışac
 │   ├── utils/             # Yardımcı fonksiyonlar (Supabase istemcisi, veri aktarımı vb.)
 │   ├── App.tsx            # Ana uygulama bileşeni
 │   └── index.tsx          # Uygulamanın giriş noktası
-├── .env                   # Ortam değişkenleri (Supabase URL ve Key) - GİZLİ
 ├── index.html             # Ana HTML dosyası
 ├── package.json           # Proje bağımlılıkları ve script'leri
 └── README.md              # Bu dosya
