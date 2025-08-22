@@ -33,9 +33,9 @@ const StockTransferFormModal: React.FC<StockTransferFormModalProps> = ({ isEdit,
                 return {
                     date: new Date(outMovement.date).toISOString().slice(0, 10),
                     sourceWarehouseId: outMovement.warehouse_id,
-                    sourceShelfId: outMovement.shelf_id,
+                    sourceShelfId: outMovement.shelf_id || '',
                     destWarehouseId: inMovement.warehouse_id,
-                    destShelfId: inMovement.shelf_id,
+                    destShelfId: inMovement.shelf_id || '',
                     notes: outMovement.notes || '',
                 };
             }
@@ -152,7 +152,12 @@ const StockTransferFormModal: React.FC<StockTransferFormModalProps> = ({ isEdit,
     const getProductSku = (productId: string) => products.find(p => p.id === productId)?.sku || '';
     const getStockInfo = (productId: string): string => {
         if (!showStock || !productId || !header.sourceWarehouseId || (availableSourceShelves.length > 0 && !header.sourceShelfId)) return '';
-        const stockItem = stockItems.find(item => item.product_id === productId && item.warehouse_id === header.sourceWarehouseId && item.shelf_id === header.sourceShelfId);
+        const effectiveShelfId = header.sourceShelfId === '' ? null : header.sourceShelfId;
+        const stockItem = stockItems.find(item => 
+            item.product_id === productId && 
+            item.warehouse_id === header.sourceWarehouseId && 
+            item.shelf_id === effectiveShelfId
+        );
         const product = products.find(p => p.id === productId);
         const unit = units.find(u => u.id === product?.unit_id);
         return `${Number(stockItem?.quantity || 0).toLocaleString()} ${unit?.abbreviation || ''}`;

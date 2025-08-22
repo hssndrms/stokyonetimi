@@ -67,7 +67,7 @@ export interface GeneralSettings {
 export interface StockItem {
   product_id: string;
   warehouse_id: string;
-  shelf_id: string;
+  shelf_id: string | null;
   quantity: number;
 }
 
@@ -77,7 +77,7 @@ export interface StockMovement {
   product_id: string;
   quantity: number;
   warehouse_id: string;
-  shelf_id: string;
+  shelf_id: string | null;
   type: 'IN' | 'OUT';
   date: string; // ISO 8601 format
   created_at: string; // ISO 8601 format

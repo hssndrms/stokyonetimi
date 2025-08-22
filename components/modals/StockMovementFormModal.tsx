@@ -34,7 +34,7 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
                 return {
                     date: new Date(firstMovement.date).toISOString().slice(0, 10),
                     warehouseId: firstMovement.warehouse_id,
-                    shelfId: firstMovement.shelf_id,
+                    shelfId: firstMovement.shelf_id || '',
                     accountId: account?.id || '',
                     notes: firstMovement.notes || '',
                 };
@@ -174,10 +174,11 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
     };
 
     const getStockInfo = (productId: string, warehouseId: string, shelfId: string): string => {
+        const effectiveShelfId = shelfId === '' ? null : shelfId;
         const stockItem = stockItems.find(item => 
             item.product_id === productId && 
             item.warehouse_id === warehouseId && 
-            item.shelf_id === shelfId
+            item.shelf_id === effectiveShelfId
         );
         const product = products.find(p => p.id === productId);
         const unit = units.find(u => u.id === product?.unit_id);
