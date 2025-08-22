@@ -2,6 +2,8 @@
 
 Bu proje, modern ve kullanıcı dostu bir arayüze sahip, çoklu depo ve raf yönetimini destekleyen, verilerini bulutta Supabase üzerinde depolayan bir stok takip uygulamasıdır.
 
+Bu bir web uygulamasıdır. Genellikle bir web sunucusunda barındırılır ve kullanıcılar bir URL üzerinden erişir. Ancak, geliştirme yapmak veya kişisel kullanım için kendi bilgisayarınızda da çalıştırabilirsiniz. Kendi bilgisayarınızda çalıştırmak için aşağıdaki kurulum rehberini takip edebilirsiniz.
+
  <!-- Projenizin bir ekran görüntüsünü buraya ekleyebilirsiniz -->
 
 ## ✨ Temel Özellikler
@@ -26,85 +28,74 @@ Bu proje, modern ve kullanıcı dostu bir arayüze sahip, çoklu depo ve raf yö
 
 ---
 
-## 🛠️ Yerel Geliştirme Ortamı Kurulumu
+## 🛠️ Uygulamayı Kendi Bilgisayarınızda Çalıştırma (Yerel Kurulum)
 
-Projeyi kendi bilgisayarınızda çalıştırıp geliştirmek için aşağıdaki adımları izleyin.
+Uygulamayı kendi bilgisayarınızda adım adım kurmak ve çalıştırmak için bu rehberi takip edin.
 
-### 1. Ön Gereksinimler
+### Adım 1: Gerekli Araçları Yükleyin (Ön Gereksinimler)
 
-- [Node.js](https://nodejs.org/) (LTS versiyonu önerilir)
-- [npm](https://www.npmjs.com/) (Node.js ile birlikte gelir)
-- [Git](https://git-scm.com/)
+Kuruluma başlamadan önce bilgisayarınızda aşağıdaki programların yüklü olduğundan emin olun:
 
-### 2. Supabase Projesi Oluşturma
+-   [**Node.js**](https://nodejs.org/): JavaScript'i tarayıcı dışında çalıştırmamızı sağlar. LTS (Uzun Süreli Destek) versiyonunu indirmeniz önerilir.
+-   [**npm**](https://www.npmjs.com/): Node.js ile birlikte otomatik olarak yüklenir. Projenin bağımlılıklarını (kütüphaneleri) yönetmek için kullanılır.
+-   [**Git**](https://git-scm.com/): Proje kodlarını GitHub'dan indirmek için gerekli olan versiyon kontrol sistemidir.
 
-1.  [Supabase](https://supabase.com/) üzerinde ücretsiz bir hesap oluşturun ve yeni bir proje başlatın.
-2.  Proje dashboard'unda, sol menüden **SQL Editor**'e gidin.
-3.  **+ New query**'ye tıklayın ve bu projedeki `pages/SetupPage.tsx` dosyasında bulunan `SETUP_SQL` içeriğinin tamamını kopyalayıp yapıştırın.
-4.  Sağ alttaki **RUN** butonuna tıklayarak veritabanı şemasını, tabloları ve fonksiyonları oluşturun.
-5.  Kurulum tamamlandıktan sonra, sol menüden **Project Settings > API** bölümüne gidin.
-6.  `Project URL` ve `Project API Keys` altındaki `anon` `public` anahtarını not alın. Uygulamayı ilk çalıştırdığınızda bu bilgilere ihtiyacınız olacak.
+### Adım 2: Veritabanını Hazırlayın (Supabase Kurulumu)
 
-### 3. Projeyi Bilgisayara İndirme ve Ayarlama
+Uygulamanın verileri bulutta, Supabase adlı serviste tutulur. Bu nedenle ücretsiz bir Supabase projesi oluşturmanız gerekmektedir.
 
-Aşağıda işletim sisteminize uygun adımları takip edebilirsiniz.
+1.  **Hesap Oluşturun:** [Supabase](https://supabase.com/) web sitesine gidin ve ücretsiz bir hesap oluşturun.
+2.  **Yeni Proje Başlatın:** Giriş yaptıktan sonra yeni bir proje (`New project`) oluşturun. Projenize bir isim verin, güçlü bir veritabanı şifresi belirleyin ve projenizin oluşturulmasını bekleyin.
+3.  **SQL Betiğini Çalıştırın:** Projeniz hazır olduğunda, sol menüden bir veritabanı ikonuna sahip **SQL Editor**'e gidin.
+4.  **Yeni Sorgu:** `+ New query` butonuna tıklayın.
+5.  **Kopyala-Yapıştır:** Bu projedeki `data/setupSql.ts` dosyasında bulunan `SETUP_SQL` değişkeninin içeriğinin tamamını kopyalayıp Supabase'deki SQL Editor'e yapıştırın.
+6.  **Çalıştır:** Sağ alttaki **RUN** butonuna tıklayarak veritabanı tablolarını ve gerekli fonksiyonları oluşturun. Bu işlem birkaç saniye sürebilir.
+7.  **Bağlantı Bilgilerini Alın:** Kurulum tamamlandıktan sonra, sol menüden çark ikonuna sahip **Project Settings > API** bölümüne gidin. Bu sayfadaki `Project URL` ve `Project API Keys` altındaki `anon` `public` anahtarını kopyalayıp bir yere not alın. Sonraki adımlarda bu bilgilere ihtiyacınız olacak.
 
----
-
-#### 🖥️ **Windows Kurulumu**
-
-1.  **Komut İstemi'ni Açın:**
-    -   Başlat menüsünü açın, `cmd` yazın ve "Komut İstemi" (Command Prompt) uygulamasını çalıştırın.
-
-2.  **Projeyi Klonlayın:**
-    -   Çalışmak istediğiniz bir klasöre gidin (örneğin, `cd Belgeler`) ve aşağıdaki komutu çalıştırın:
-        ```bash
-        git clone https://github.com/kullanici-adiniz/proje-repo-adi.git
-        cd proje-repo-adi
-        ```
-      *(Not: `kullanici-adiniz/proje-repo-adi` kısmını kendi GitHub bilgilerinizle güncelleyin.)*
-
-3.  **Gerekli Paketleri Yükleyin:**
-    ```bash
-    npm install
-    ```
-
-4.  **Geliştirme Sunucusunu Başlatın:**
-    ```bash
-    npm run dev
-    ```
-
-5.  **Kurulumu Tamamlayın:**
-    -   Uygulama tarayıcıda açıldığında, sizden Supabase URL ve Anon Key bilgilerinizi girmenizi isteyecektir. Bu bilgileri web arayüzü üzerinden girerek kurulumu tamamlayabilirsiniz.
-
----
-
-#### 🍏 **macOS Kurulumu**
+### Adım 3: Proje Kodlarını Bilgisayarınıza İndirin
 
 1.  **Terminal'i Açın:**
-    -   `Applications > Utilities` klasöründen veya Spotlight aramasına (`Cmd + Space`) `Terminal` yazarak uygulamayı açın.
+    -   **Windows'ta:** Başlat menüsünü açın, `cmd` veya `powershell` yazın ve "Komut İstemi" veya "PowerShell" uygulamasını çalıştırın.
+    -   **macOS'te:** `Applications > Utilities` klasöründen veya Spotlight (`Cmd + Space`) ile `Terminal` uygulamasını açın.
 
-2.  **Projeyi Klonlayın:**
-    -   Çalışmak istediğiniz bir klasöre gidin (örneğin, `cd ~/Documents`) ve aşağıdaki komutu çalıştırın:
-        ```bash
-        git clone https://github.com/kullanici-adiniz/proje-repo-adi.git
-        cd proje-repo-adi
-        ```
-       *(Not: `kullanici-adiniz/proje-repo-adi` kısmını kendi GitHub bilgilerinizle güncelleyin.)*
+2.  **Projeyi Klonlayın (İndirin):**
+    Terminalde, projeyi indirmek istediğiniz bir klasöre gidin (örneğin, `cd Belgeler` veya `cd Documents`) ve aşağıdaki komutu çalıştırın:
+    ```bash
+    git clone https://github.com/kullanici-adiniz/proje-repo-adi.git
+    ```
+    *(Not: `https://github.com/kullanici-adiniz/proje-repo-adi.git` kısmını bu projenin gerçek GitHub URL'si ile değiştirin.)*
 
-3.  **Gerekli Paketleri Yükleyin:**
+3.  **Proje Klasörüne Girin:**
+    ```bash
+    cd proje-repo-adi
+    ```
+    *(Not: `proje-repo-adi` kısmını klonladığınız klasörün adıyla değiştirin.)*
+
+### Adım 4: Projeyi Başlatın
+
+1.  **Gerekli Paketleri Yükleyin:**
+    Proje klasörünün içindeyken, terminale aşağıdaki komutu yazın. Bu komut, projenin çalışması için gereken tüm kütüphaneleri indirecektir.
     ```bash
     npm install
     ```
 
-4.  **Geliştirme Sunucusunu Başlatın:**
+2.  **Geliştirme Sunucusunu Başlatın:**
+    Paketler yüklendikten sonra, uygulamayı başlatmak için aşağıdaki komutu çalıştırın:
     ```bash
     npm run dev
     ```
+    Bu komut, projenizi derleyecek ve test amaçlı bir web sunucusu başlatacaktır. Terminalde `Local:` ile başlayan bir adres (genellikle `http://localhost:5173`) göreceksiniz.
 
-5.  **Kurulumu Tamamlayın:**
-    -   Uygulama tarayıcıda açıldığında, sizden Supabase URL ve Anon Key bilgilerinizi isteyecektir. Bu bilgileri web arayüzü üzerinden girerek kurulumu tamamlayabilirsiniz.
+### Adım 5: Uygulamayı Yapılandırın
 
+`npm run dev` komutunu çalıştırdıktan sonra, web tarayıcınızda otomatik olarak yeni bir sekme açılmalıdır.
+
+1.  Uygulama ilk açıldığında, sizden Supabase bağlantı bilgilerinizi girmenizi isteyen bir kurulum ekranı ile karşılaşacaksınız.
+2.  **Adım 2.7**'de not aldığınız `Supabase URL` ve `Supabase Anon Key` bilgilerini ilgili alanlara yapıştırın.
+3.  **"Kaydet ve Bağlan"** butonuna tıklayın.
+4.  Her şey yolunda gittiyse, uygulama veritabanına bağlanacak ve ana ekranı göreceksiniz. Kurulum tamamlandı!
+
+Artık uygulamayı yerel bilgisayarınızda kullanabilirsiniz. Terminali kapatmadığınız sürece uygulama belirtilen adreste çalışmaya devam edecektir.
 
 ---
 ## 📦 Derleme ve Dağıtım (Build & Deployment)
