@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stok Takip Uygulaması</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+    /* Date input picker'ın tıklanabilirliğini artırmak için eklendi */
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        cursor: pointer;
+        opacity: 1;
+    }
+    /* Toast Animation */
+    @keyframes toast-in {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    .animate-toast-in {
+      animation: toast-in 0.5s ease-out forwards;
+    }
+
+    /* Drag & Drop Styles */
+    .draggable-item {
+        cursor: grab;
+        user-select: none;
+    }
+    .draggable-item:active {
+        cursor: grabbing;
+    }
+    .drop-indicator {
+        height: 4px;
+        background-color: #4f46e5; /* indigo-600 */
+        border-radius: 2px;
+        margin: -2px 0;
+    }
+    .drop-zone.drag-over {
+        outline: 2px dashed #a5b4fc; /* indigo-300 */
+        outline-offset: -4px;
+        background-color: #eef2ff; /* indigo-50 */
+    }
+    .group-drop-zone.drag-over-group {
+        background-color: #f0f9ff; /* sky-50 */
+    }
+    .dragging {
+        opacity: 0.5;
+    }
+
+
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.1.1/",
+    "react": "https://esm.sh/react@^19.1.1",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.1/",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2"
+  }
+}
+</script>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+</body>
+</html>

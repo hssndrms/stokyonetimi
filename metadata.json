@@ -1,0 +1,5 @@
+{
+  "name": "Stok Takip Uygulaması SupaBase",
+  "description": "Modern ve kullanıcı dostu bir arayüze sahip, çoklu depo ve raf yönetimini destekleyen, verileri yerel olarak depolayan bir stok takip uygulaması.",
+  "requestFramePermissions": []
+}
