@@ -115,13 +115,15 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
 
 
     useEffect(() => {
-        setAvailableShelves(header.warehouseId ? shelves.filter(s => s.warehouse_id === header.warehouseId) : []);
+        const shelvesForWarehouse = header.warehouseId ? shelves.filter(s => s.warehouse_id === header.warehouseId) : [];
+        setAvailableShelves(shelvesForWarehouse);
         if (header.warehouseId) {
             const currentShelf = shelves.find(s => s.id === header.shelfId);
             if (currentShelf && currentShelf.warehouse_id !== header.warehouseId) {
                 setHeader(h => ({ ...h, shelfId: '' }));
             }
         } else {
+            setHeader(h => ({ ...h, shelfId: '' }));
             setShowStock(false);
         }
     }, [header.warehouseId, shelves]);
@@ -230,7 +232,7 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
              const headerData = {
                 date: header.date,
                 warehouse_id: header.warehouseId,
-                shelf_id: header.shelfId,
+                shelf_id: header.shelfId || null,
                 source_or_destination: selectedAccount.name,
                 notes: header.notes,
                 type: voucherType
@@ -240,7 +242,7 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
              const headerData = {
                 date: header.date,
                 warehouse_id: header.warehouseId,
-                shelf_id: header.shelfId,
+                shelf_id: header.shelfId || null,
                 source_or_destination: selectedAccount.name,
                 notes: header.notes,
             };

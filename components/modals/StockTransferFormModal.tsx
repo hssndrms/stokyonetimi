@@ -93,22 +93,28 @@ const StockTransferFormModal: React.FC<StockTransferFormModalProps> = ({ isEdit,
 
 
     useEffect(() => {
-        setAvailableSourceShelves(header.sourceWarehouseId ? shelves.filter(s => s.warehouse_id === header.sourceWarehouseId) : []);
+        const shelvesForWarehouse = header.sourceWarehouseId ? shelves.filter(s => s.warehouse_id === header.sourceWarehouseId) : [];
+        setAvailableSourceShelves(shelvesForWarehouse);
         if (header.sourceWarehouseId) {
             const currentShelf = shelves.find(s => s.id === header.sourceShelfId);
             if (currentShelf && currentShelf.warehouse_id !== header.sourceWarehouseId) {
                 setHeader(h => ({ ...h, sourceShelfId: '' }));
             }
+        } else {
+            setHeader(h => ({ ...h, sourceShelfId: '' }));
         }
     }, [header.sourceWarehouseId, shelves]);
     
     useEffect(() => {
-        setAvailableDestShelves(header.destWarehouseId ? shelves.filter(s => s.warehouse_id === header.destWarehouseId) : []);
+        const shelvesForWarehouse = header.destWarehouseId ? shelves.filter(s => s.warehouse_id === header.destWarehouseId) : [];
+        setAvailableDestShelves(shelvesForWarehouse);
         if (header.destWarehouseId) {
             const currentShelf = shelves.find(s => s.id === header.destShelfId);
             if (currentShelf && currentShelf.warehouse_id !== header.destWarehouseId) {
                 setHeader(h => ({ ...h, destShelfId: '' }));
             }
+        } else {
+             setHeader(h => ({ ...h, destShelfId: '' }));
         }
     }, [header.destWarehouseId, shelves]);
 
@@ -145,7 +151,7 @@ const StockTransferFormModal: React.FC<StockTransferFormModalProps> = ({ isEdit,
     
     const getProductSku = (productId: string) => products.find(p => p.id === productId)?.sku || '';
     const getStockInfo = (productId: string): string => {
-        if (!showStock || !productId || !header.sourceWarehouseId) return '';
+        if (!showStock || !productId || !header.sourceWarehouseId || (availableSourceShelves.length > 0 && !header.sourceShelfId)) return '';
         const stockItem = stockItems.find(item => item.product_id === productId && item.warehouse_id === header.sourceWarehouseId && item.shelf_id === header.sourceShelfId);
         const product = products.find(p => p.id === productId);
         const unit = units.find(u => u.id === product?.unit_id);
@@ -158,20 +164,22 @@ const StockTransferFormModal: React.FC<StockTransferFormModalProps> = ({ isEdit,
         const newErrors: FormErrors = { header: {}, lines: {} };
         if (!header.date) newErrors.header!.date = true;
         if (!header.sourceWarehouseId) newErrors.header!.sourceWarehouseId = true;
-        if (availableSourceShelves.length > 0 && !header.sourceShelfId) newErrors.header!.sourceShelfId = true;
+        if (availableSourceShelves.length > 0 && !header.sourceShelfId) {
+            newErrors.header!.sourceShelfId = true;
+        }
         if (!header.destWarehouseId) newErrors.header!.destWarehouseId = true;
-        if (availableDestShelves.length > 0 && !header.destShelfId) newErrors.header!.destShelfId = true;
-
-        if (header.sourceShelfId && header.sourceShelfId === header.destShelfId) {
-             addToast('Kaynak ve hedef raf aynı olamaz.', 'error');
-             newErrors.header!.sourceShelfId = true;
-             newErrors.header!.destShelfId = true;
+        if (availableDestShelves.length > 0 && !header.destShelfId) {
+            newErrors.header!.destShelfId = true;
         }
 
-        if (header.sourceWarehouseId === header.destWarehouseId && header.sourceShelfId === header.destShelfId) {
+        if (header.sourceWarehouseId && header.destWarehouseId &&
+            header.sourceWarehouseId === header.destWarehouseId &&
+            header.sourceShelfId === header.destShelfId) {
             addToast('Kaynak ve hedef konum tamamen aynı olamaz.', 'error');
             newErrors.header!.sourceWarehouseId = true;
+            newErrors.header!.sourceShelfId = true;
             newErrors.header!.destWarehouseId = true;
+            newErrors.header!.destShelfId = true;
         }
 
         lines.forEach(l => {
@@ -193,9 +201,9 @@ const StockTransferFormModal: React.FC<StockTransferFormModalProps> = ({ isEdit,
         const headerData = { 
             date: header.date,
             source_warehouse_id: header.sourceWarehouseId,
-            source_shelf_id: header.sourceShelfId,
+            source_shelf_id: header.sourceShelfId || null,
             dest_warehouse_id: header.destWarehouseId,
-            dest_shelf_id: header.destShelfId,
+            dest_shelf_id: header.destShelfId || null,
             notes: header.notes
         };
         const linesData = validLines.map(l => ({ product_id: l.productId, quantity: parseFloat(l.quantity) }));
@@ -275,7 +283,14 @@ const StockTransferFormModal: React.FC<StockTransferFormModalProps> = ({ isEdit,
                         </div>
                         <div>
                             <label className={formLabelClass}>Çıkan Raf</label>
-                            <SearchableSelect options={availableSourceShelves} value={header.sourceShelfId} onChange={val => handleHeaderChange('sourceShelfId', val)} placeholder="Raf Seçin" disabled={!header.sourceWarehouseId} error={!!errors.header?.sourceShelfId} />
+                            <SearchableSelect 
+                                options={availableSourceShelves} 
+                                value={header.sourceShelfId} 
+                                onChange={val => handleHeaderChange('sourceShelfId', val)} 
+                                placeholder={!header.sourceWarehouseId ? "Önce Depo Seçin" : availableSourceShelves.length === 0 ? "Raf bulunmuyor" : "Raf Seçin"}
+                                disabled={!header.sourceWarehouseId || availableSourceShelves.length === 0} 
+                                error={!!errors.header?.sourceShelfId} 
+                            />
                         </div>
                     </div>
                 </fieldset>
@@ -288,7 +303,14 @@ const StockTransferFormModal: React.FC<StockTransferFormModalProps> = ({ isEdit,
                         </div>
                         <div>
                             <label className={formLabelClass}>Giren Raf</label>
-                            <SearchableSelect options={availableDestShelves} value={header.destShelfId} onChange={val => handleHeaderChange('destShelfId', val)} placeholder="Raf Seçin" disabled={!header.destWarehouseId} error={!!errors.header?.destShelfId} />
+                             <SearchableSelect 
+                                options={availableDestShelves} 
+                                value={header.destShelfId} 
+                                onChange={val => handleHeaderChange('destShelfId', val)} 
+                                placeholder={!header.destWarehouseId ? "Önce Depo Seçin" : availableDestShelves.length === 0 ? "Raf bulunmuyor" : "Raf Seçin"}
+                                disabled={!header.destWarehouseId || availableDestShelves.length === 0} 
+                                error={!!errors.header?.destShelfId} 
+                            />
                         </div>
                     </div>
                 </fieldset>

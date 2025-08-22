@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../context/ToastContext';
 import { getSupabaseCredentials, setSupabaseCredentials } from '../utils/supabase';
@@ -7,6 +8,31 @@ const SETUP_SQL = `
 -- Stok Takip Uygulaması Kurulum Betiği
 -- Bu betik, uygulamanın ihtiyaç duyduğu tüm tabloları, fonksiyonları ve güvenlik kurallarını oluşturur.
 -- Supabase projenizdeki SQL Editor'e yapıştırıp çalıştırın.
+
+-- Önceki objeleri temizle (isteğe bağlı, temiz kurulum için)
+DROP FUNCTION IF EXISTS public.edit_stock_transfer(text,json,jsonb);
+DROP FUNCTION IF EXISTS public.edit_stock_voucher(text,json,jsonb);
+DROP FUNCTION IF EXISTS public.delete_stock_voucher(text);
+DROP FUNCTION IF EXISTS public.stock_transfer(json,jsonb);
+DROP FUNCTION IF EXISTS public.stock_out(json,jsonb);
+DROP FUNCTION IF EXISTS public.stock_in(json,jsonb);
+DROP FUNCTION IF EXISTS public.process_stock_movement(uuid,uuid,uuid,numeric,text);
+DROP FUNCTION IF EXISTS public.get_next_account_code(text);
+DROP FUNCTION IF EXISTS public.get_next_sku(uuid);
+DROP FUNCTION IF EXISTS public.get_next_voucher_number(text);
+ALTER TABLE public.general_settings DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.stock_movements DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.stock_items DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.products DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.shelves DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.warehouses DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.accounts DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.units DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.product_groups DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.warehouse_groups DISABLE ROW LEVEL SECURITY;
+DROP TABLE IF EXISTS public.general_settings, public.stock_movements, public.stock_items, public.products, public.shelves, public.warehouses, public.accounts, public.units, public.product_groups, public.warehouse_groups CASCADE;
+DROP FUNCTION IF EXISTS public.handle_updated_at();
+
 
 -- 1. TABLOLARI OLUŞTURMA
 -- =============================================
@@ -86,25 +112,28 @@ CREATE TABLE public.products (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- stock_items (Stok Durumları)
+-- stock_items (Stok Durumları) - Rafsız depo desteği eklendi
 CREATE TABLE public.stock_items (
     id BIGSERIAL PRIMARY KEY,
     product_id UUID NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
     warehouse_id UUID NOT NULL REFERENCES public.warehouses(id) ON DELETE CASCADE,
-    shelf_id UUID NOT NULL REFERENCES public.shelves(id) ON DELETE CASCADE,
+    shelf_id UUID NULL REFERENCES public.shelves(id) ON DELETE CASCADE, -- NULL olabilir
     quantity NUMERIC(15, 4) NOT NULL DEFAULT 0.0 CHECK (quantity >= 0),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE(product_id, warehouse_id, shelf_id)
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+-- Rafsız ve raflı durumlar için benzersizlik (uniqueness) kuralları
+CREATE UNIQUE INDEX stock_items_shelf_unique ON public.stock_items (product_id, warehouse_id, shelf_id) WHERE shelf_id IS NOT NULL;
+CREATE UNIQUE INDEX stock_items_warehouse_unique ON public.stock_items (product_id, warehouse_id) WHERE shelf_id IS NULL;
 
--- stock_movements (Stok Hareketleri)
+
+-- stock_movements (Stok Hareketleri) - Rafsız depo desteği eklendi
 CREATE TABLE public.stock_movements (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     voucher_number TEXT NOT NULL,
     product_id UUID NOT NULL REFERENCES public.products(id) ON DELETE RESTRICT,
     quantity NUMERIC(15, 4) NOT NULL CHECK (quantity > 0),
     warehouse_id UUID NOT NULL REFERENCES public.warehouses(id) ON DELETE RESTRICT,
-    shelf_id UUID NOT NULL REFERENCES public.shelves(id) ON DELETE RESTRICT,
+    shelf_id UUID NULL REFERENCES public.shelves(id) ON DELETE RESTRICT, -- NULL olabilir
     type TEXT NOT NULL CHECK (type IN ('IN', 'OUT')),
     date DATE NOT NULL,
     source_or_destination TEXT NOT NULL,
@@ -119,7 +148,7 @@ CREATE INDEX ON public.stock_movements (date);
 
 -- general_settings (Genel Ayarlar)
 CREATE TABLE public.general_settings (
-    id INT PRIMARY KEY DEFAULT 1,
+    id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
     customer_code_prefix TEXT NOT NULL,
     customer_code_length INT NOT NULL,
     supplier_code_prefix TEXT NOT NULL,
@@ -144,13 +173,12 @@ FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 
 -- 3. VARSAYILAN AYARLARI EKLEME
 -- =============================================
-INSERT INTO public.general_settings (customer_code_prefix, customer_code_length, supplier_code_prefix, supplier_code_length, stock_in_prefix, stock_in_length, stock_out_prefix, stock_out_length, stock_transfer_prefix, stock_transfer_length)
-VALUES ('M', 5, 'T', 5, 'G', 8, 'C', 8, 'TR', 8);
+INSERT INTO public.general_settings (id, customer_code_prefix, customer_code_length, supplier_code_prefix, supplier_code_length, stock_in_prefix, stock_in_length, stock_out_prefix, stock_out_length, stock_transfer_prefix, stock_transfer_length)
+VALUES (1, 'M', 5, 'T', 5, 'G', 8, 'C', 8, 'TR', 8) ON CONFLICT(id) DO NOTHING;
 
 
 -- 4. GÜVENLİK (ROW LEVEL SECURITY) KURALLARINI OLUŞTURMA
 -- =============================================
--- Not: Bu kurallar herkese açık erişim sağlar. Gerçek bir uygulamada kimlik doğrulamaya dayalı daha sıkı kurallar gerekebilir.
 ALTER TABLE public.warehouse_groups ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public access" ON public.warehouse_groups FOR ALL USING (true) WITH CHECK (true);
 
@@ -276,7 +304,7 @@ END;
 $$;
 
 
--- Stok Giriş/Çıkış Hareketlerini İşleme Fonksiyonu
+-- Stok Giriş/Çıkış Hareketlerini İşleme Fonksiyonu (RAFLI/RAFSIZ DEPO DESTEĞİ İLE) - DÜZELTİLDİ
 CREATE OR REPLACE FUNCTION public.process_stock_movement(
     p_product_id uuid,
     p_warehouse_id uuid,
@@ -289,14 +317,26 @@ DECLARE
     current_quantity numeric;
 BEGIN
     IF p_type = 'IN' THEN
-        INSERT INTO public.stock_items (product_id, warehouse_id, shelf_id, quantity)
-        VALUES (p_product_id, p_warehouse_id, p_shelf_id, p_quantity)
-        ON CONFLICT (product_id, warehouse_id, shelf_id)
-        DO UPDATE SET quantity = stock_items.quantity + p_quantity;
+        IF p_shelf_id IS NULL THEN
+             -- Rafsız depo için stok ekle/güncelle
+             INSERT INTO public.stock_items (product_id, warehouse_id, shelf_id, quantity)
+             VALUES (p_product_id, p_warehouse_id, NULL, p_quantity)
+             ON CONFLICT (product_id, warehouse_id) WHERE shelf_id IS NULL
+             DO UPDATE SET quantity = stock_items.quantity + EXCLUDED.quantity;
+        ELSE
+             -- Raflı depo için stok ekle/güncelle
+             INSERT INTO public.stock_items (product_id, warehouse_id, shelf_id, quantity)
+             VALUES (p_product_id, p_warehouse_id, p_shelf_id, p_quantity)
+             ON CONFLICT (product_id, warehouse_id, shelf_id) WHERE shelf_id IS NOT NULL
+             DO UPDATE SET quantity = stock_items.quantity + EXCLUDED.quantity;
+        END IF;
+
     ELSIF p_type = 'OUT' THEN
         SELECT quantity INTO current_quantity
         FROM public.stock_items
-        WHERE product_id = p_product_id AND warehouse_id = p_warehouse_id AND shelf_id = p_shelf_id;
+        WHERE product_id = p_product_id 
+          AND warehouse_id = p_warehouse_id 
+          AND shelf_id IS NOT DISTINCT FROM p_shelf_id;
 
         IF current_quantity IS NULL OR current_quantity < p_quantity THEN
             RAISE EXCEPTION 'Yetersiz stok: Ürün ID %, Depo ID %, Raf ID %', p_product_id, p_warehouse_id, p_shelf_id;
@@ -304,7 +344,9 @@ BEGIN
 
         UPDATE public.stock_items
         SET quantity = quantity - p_quantity
-        WHERE product_id = p_product_id AND warehouse_id = p_warehouse_id AND shelf_id = p_shelf_id;
+        WHERE product_id = p_product_id 
+          AND warehouse_id = p_warehouse_id 
+          AND shelf_id IS NOT DISTINCT FROM p_shelf_id;
     END IF;
 END;
 $$;
@@ -455,7 +497,7 @@ END;
 $$;
 
 
--- Stok Giriş/Çıkış Fişi Düzenleme Fonksiyonu (GÜNCELLENDİ)
+-- Stok Giriş/Çıkış Fişi Düzenleme Fonksiyonu
 CREATE OR REPLACE FUNCTION public.edit_stock_voucher(p_voucher_number text, header_data json, lines_data jsonb)
 RETURNS void LANGUAGE plpgsql AS $$
 DECLARE
@@ -465,10 +507,8 @@ BEGIN
     -- Önceki hareketleri geri al
     PERFORM public.delete_stock_voucher(p_voucher_number);
 
-    -- Hareket tipini frontend'den gelen veriden al
     movement_type := header_data->>'type';
     
-    -- Hareket tipinin geçerli olup olmadığını kontrol et
     IF movement_type IS NULL OR (movement_type <> 'IN' AND movement_type <> 'OUT') THEN
         RAISE EXCEPTION 'Geçersiz hareket tipi sağlandı: %', movement_type;
     END IF;
@@ -518,19 +558,120 @@ BEGIN
         VALUES (p_voucher_number, (line->>'product_id')::uuid, (line->>'quantity')::numeric, (header_data->>'source_warehouse_id')::uuid, (header_data->>'source_shelf_id')::uuid, 'OUT', (header_data->>'date')::date, 'Transfer', header_data->>'notes');
         PERFORM public.process_stock_movement((line->>'product_id')::uuid, (header_data->>'source_warehouse_id')::uuid, (header_data->>'source_shelf_id')::uuid, (line->>'quantity')::numeric, 'OUT');
 
-        -- Giriş
+        -- Giriş (DÜZELTİLDİ: hedef depo ve raf kullanılıyor)
         INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes)
         VALUES (p_voucher_number, (line->>'product_id')::uuid, (line->>'quantity')::numeric, (header_data->>'dest_warehouse_id')::uuid, (header_data->>'dest_shelf_id')::uuid, 'IN', (header_data->>'date')::date, 'Transfer', header_data->>'notes');
         PERFORM public.process_stock_movement((line->>'product_id')::uuid, (header_data->>'dest_warehouse_id')::uuid, (header_data->>'dest_shelf_id')::uuid, (line->>'quantity')::numeric, 'IN');
     END LOOP;
 END;
 $$;
-
 `;
+
+interface VersionUpdate {
+  version: string;
+  date: string;
+  description: string;
+  sql: string;
+}
+
+// Gelecekteki veritabanı güncellemeleri bu diziye eklenecektir.
+const VERSION_UPDATES: VersionUpdate[] = [
+    {
+        version: '1.2.0',
+        date: '2024-08-24',
+        description: 'Stok transfer fişi düzenlendiğinde, transferin giriş ayağının stokları yanlışlıkla kaynak depoda güncellemesine neden olan bir hata düzeltildi. Fonksiyon artık stok miktarını doğru şekilde hedef depoya ekliyor.',
+        sql: `
+-- Versiyon 1.2.0: Stok transferi düzenleme hatasını düzeltme
+-- Açıklama: Bu güncelleme, edit_stock_transfer fonksiyonundaki bir hatayı giderir.
+-- Hata, transferin giriş ayağının stok miktarını hedef depo yerine
+-- yanlışlıkla kaynak depoya eklemesine neden oluyordu.
+CREATE OR REPLACE FUNCTION public.edit_stock_transfer(p_voucher_number text, header_data json, lines_data jsonb)
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+    line JSONB;
+BEGIN
+    -- Önceki hareketleri geri al
+    PERFORM public.delete_stock_voucher(p_voucher_number);
+
+    -- Yeni hareketleri ekle
+    FOR line IN SELECT * FROM jsonb_array_elements(lines_data)
+    LOOP
+        -- Çıkış
+        INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes)
+        VALUES (p_voucher_number, (line->>'product_id')::uuid, (line->>'quantity')::numeric, (header_data->>'source_warehouse_id')::uuid, (header_data->>'source_shelf_id')::uuid, 'OUT', (header_data->>'date')::date, 'Transfer', header_data->>'notes');
+        PERFORM public.process_stock_movement((line->>'product_id')::uuid, (header_data->>'source_warehouse_id')::uuid, (header_data->>'source_shelf_id')::uuid, (line->>'quantity')::numeric, 'OUT');
+
+        -- Giriş (DÜZELTİLDİ: hedef depo ve raf kullanılıyor)
+        INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes)
+        VALUES (p_voucher_number, (line->>'product_id')::uuid, (line->>'quantity')::numeric, (header_data->>'dest_warehouse_id')::uuid, (header_data->>'dest_shelf_id')::uuid, 'IN', (header_data->>'date')::date, 'Transfer', header_data->>'notes');
+        PERFORM public.process_stock_movement((line->>'product_id')::uuid, (header_data->>'dest_warehouse_id')::uuid, (header_data->>'dest_shelf_id')::uuid, (line->>'quantity')::numeric, 'IN');
+    END LOOP;
+END;
+$$;
+`
+    },
+    {
+        version: '1.1.0',
+        date: '2024-08-23',
+        description: 'Stok girişi sırasında yaşanan "ON CONFLICT" ve "constraint does not exist" hatalarını düzeltir. Bu güncelleme, stok hareketlerini işleyen fonksiyonun, raflı ve rafsız depolar için doğru benzersizlik kurallarını (unique index) hedef almasını sağlar.',
+        sql: `
+-- Versiyon 1.1.0: Stok girişi ON CONFLICT hatasını düzeltme
+-- Açıklama: Bu güncelleme, raflı ve rafsız depolar için stok girişi sırasında oluşan
+-- "constraint ... does not exist" hatasını giderir.
+-- Fonksiyon, doğru benzersizlik kısıtlamalarını (unique constraints) hedef alacak şekilde güncellenmiştir.
+CREATE OR REPLACE FUNCTION public.process_stock_movement(
+    p_product_id uuid,
+    p_warehouse_id uuid,
+    p_shelf_id uuid,
+    p_quantity numeric,
+    p_type text
+)
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+    current_quantity numeric;
+BEGIN
+    IF p_type = 'IN' THEN
+        IF p_shelf_id IS NULL THEN
+             -- Rafsız depo için stok ekle/güncelle
+             INSERT INTO public.stock_items (product_id, warehouse_id, shelf_id, quantity)
+             VALUES (p_product_id, p_warehouse_id, NULL, p_quantity)
+             ON CONFLICT (product_id, warehouse_id) WHERE shelf_id IS NULL
+             DO UPDATE SET quantity = stock_items.quantity + EXCLUDED.quantity;
+        ELSE
+             -- Raflı depo için stok ekle/güncelle
+             INSERT INTO public.stock_items (product_id, warehouse_id, shelf_id, quantity)
+             VALUES (p_product_id, p_warehouse_id, p_shelf_id, p_quantity)
+             ON CONFLICT (product_id, warehouse_id, shelf_id) WHERE shelf_id IS NOT NULL
+             DO UPDATE SET quantity = stock_items.quantity + EXCLUDED.quantity;
+        END IF;
+
+    ELSIF p_type = 'OUT' THEN
+        SELECT quantity INTO current_quantity
+        FROM public.stock_items
+        WHERE product_id = p_product_id 
+          AND warehouse_id = p_warehouse_id 
+          AND shelf_id IS NOT DISTINCT FROM p_shelf_id;
+
+        IF current_quantity IS NULL OR current_quantity < p_quantity THEN
+            RAISE EXCEPTION 'Yetersiz stok: Ürün ID %, Depo ID %, Raf ID %', p_product_id, p_warehouse_id, p_shelf_id;
+        END IF;
+
+        UPDATE public.stock_items
+        SET quantity = quantity - p_quantity
+        WHERE product_id = p_product_id 
+          AND warehouse_id = p_warehouse_id 
+          AND shelf_id IS NOT DISTINCT FROM p_shelf_id;
+    END IF;
+END;
+$$;
+`
+    }
+].sort((a, b) => b.version.localeCompare(a.version, undefined, { numeric: true }));
+
 
 const SetupPage: React.FC<{ onCheckAgain: () => void; reason: 'tables' | 'config' | null; onClose?: () => void; loading: boolean; }> = ({ onCheckAgain, reason, onClose, loading }) => {
     const { addToast } = useToast();
-    const [copied, setCopied] = useState(false);
+    const [activeTab, setActiveTab] = useState<'setup' | 'updates'>('setup');
     
     const [credentials, setCredentials] = useState({ url: '', anonKey: '' });
     
@@ -557,12 +698,10 @@ const SetupPage: React.FC<{ onCheckAgain: () => void; reason: 'tables' | 'config
     };
 
 
-    const copySqlToClipboard = () => {
-        navigator.clipboard.writeText(SETUP_SQL)
+    const copySqlToClipboard = (sql: string, message: string) => {
+        navigator.clipboard.writeText(sql)
             .then(() => {
-                addToast('SQL Betiği Panoya Kopyalandı!', 'success');
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
+                addToast(message, 'success');
             })
             .catch(err => {
                 console.error('Copy failed', err);
@@ -638,50 +777,100 @@ const SetupPage: React.FC<{ onCheckAgain: () => void; reason: 'tables' | 'config
             </div>
         );
     }
+    
+    const CopyButton: React.FC<{ sqlToCopy: string, message: string }> = ({ sqlToCopy, message }) => {
+        const [copied, setCopied] = useState(false);
+        
+        const handleClick = () => {
+            copySqlToClipboard(sqlToCopy, message);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+
+        return (
+            <button onClick={handleClick} className="bg-slate-600 text-white py-1 px-3 rounded-md text-sm hover:bg-slate-500 transition-colors">
+                {copied ? <><i className="fa-solid fa-check mr-2"></i>Kopyalandı</> : <><i className="fa-solid fa-copy mr-2"></i>Kopyala</>}
+            </button>
+        );
+    }
+
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-slate-100 p-4">
             <div className="text-left p-8 bg-white rounded-lg shadow-xl max-w-4xl mx-auto w-full">
-                <h1 className="text-3xl font-bold text-slate-800 mb-2">Veritabanı Kurulumu</h1>
-                <p className="text-slate-600 mb-6">
-                    Hoş geldiniz! Uygulamayı kullanmaya başlamadan önce veritabanı tablolarının ve fonksiyonlarının kurulması gerekiyor.
-                </p>
-                
-                <div className="space-y-4 text-slate-700">
-                    <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-md">
-                        <h2 className="font-bold text-lg text-indigo-800 mb-2">1. Adım: SQL Betiğini Kopyalayın</h2>
-                        <p>Aşağıdaki butona tıklayarak veritabanınızı oluşturacak olan tüm SQL komutlarını panonuza kopyalayın.</p>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h1 className="text-3xl font-bold text-slate-800 mb-2">Veritabanı Yönetimi</h1>
+                        <p className="text-slate-600 mb-6">
+                           Uygulamanın veritabanını kurun veya güncelleyin.
+                        </p>
                     </div>
-
-                     <div className="relative">
-                        <div className="bg-slate-800 text-white p-4 rounded-md my-4 max-h-60 overflow-y-auto">
-                            <pre><code className="text-sm font-mono whitespace-pre-wrap">{SETUP_SQL}</code></pre>
-                        </div>
-                        <button 
-                            onClick={copySqlToClipboard}
-                            className="absolute top-6 right-2 bg-slate-600 text-white py-1 px-3 rounded-md text-sm hover:bg-slate-500 transition-colors"
-                        >
-                            {copied ? <><i className="fa-solid fa-check mr-2"></i>Kopyalandı</> : <><i className="fa-solid fa-copy mr-2"></i>Kopyala</>}
-                        </button>
-                    </div>
-
-                    <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-md">
-                        <h2 className="font-bold text-lg text-indigo-800 mb-2">2. Adım: Supabase'de Çalıştırın</h2>
-                        <p>Supabase projenize gidin. Sol menüden <i className="fa-solid fa-database"></i> <strong>SQL Editor</strong>'e tıklayın. Açılan sayfada <strong>+ New query</strong> butonuna basın, kopyaladığınız betiği yapıştırın ve <strong>RUN</strong> butonuna tıklayın.</p>
-                    </div>
-
-                    <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-md">
-                        <h2 className="font-bold text-lg text-indigo-800 mb-2">3. Adım: Kurulumu Doğrulayın</h2>
-                        <p>SQL betiği başarıyla çalıştıktan sonra, bu sayfaya geri dönün ve aşağıdaki butona tıklayarak kurulumu doğrulayın.</p>
-                    </div>
-                </div>
-
-                <div className="mt-8 pt-6 border-t flex justify-end gap-4">
                      {onClose && (
-                        <button type="button" onClick={onClose} className="font-semibold py-3 px-6 rounded-md transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300">
-                             <i className="fa-solid fa-arrow-left mr-2"></i> Geri Dön
+                        <button type="button" onClick={onClose} className="font-semibold py-2 px-4 rounded-md transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300">
+                             <i className="fa-solid fa-times mr-2"></i> Kapat
                         </button>
                     )}
+                </div>
+
+                <div className="mb-6 border-b border-slate-200">
+                    <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+                        <button onClick={() => setActiveTab('setup')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'setup' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>
+                            İlk Kurulum
+                        </button>
+                        <button onClick={() => setActiveTab('updates')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'updates' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>
+                            Versiyon Güncellemeleri
+                        </button>
+                    </nav>
+                </div>
+                
+                <div>
+                    {activeTab === 'setup' && (
+                        <div>
+                             <div className="p-4 bg-red-50 border border-red-200 rounded-md mb-4">
+                               <h3 className="font-bold text-lg text-red-800 flex items-center gap-2"><i className="fa-solid fa-triangle-exclamation"></i> DİKKAT!</h3>
+                               <p className="text-red-700 mt-1">Bu betik, mevcut tüm stok takip tablolarınızı silip yeniden oluşturacaktır. Yalnızca uygulamayı <strong>ilk defa kuruyorsanız</strong> veya tüm verilerinizi sıfırlamak istiyorsanız çalıştırın.</p>
+                            </div>
+                            <p className="text-slate-700 mb-4">Aşağıdaki betiği kopyalayıp Supabase projenizdeki <strong>SQL Editor</strong>'e yapıştırın ve çalıştırın. Bu işlem, uygulamanın en güncel sürümüyle uyumlu tüm tabloları ve fonksiyonları oluşturacaktır.</p>
+                             <div className="relative">
+                                <div className="bg-slate-800 text-white p-4 rounded-md my-4 max-h-60 overflow-y-auto">
+                                    <pre><code className="text-sm font-mono whitespace-pre-wrap">{SETUP_SQL}</code></pre>
+                                </div>
+                                <div className="absolute top-6 right-2">
+                                    <CopyButton sqlToCopy={SETUP_SQL} message="Kurulum Betiği Panoya Kopyalandı!" />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'updates' && (
+                        <div>
+                             <div className="p-4 bg-sky-50 border border-sky-200 rounded-md mb-4">
+                               <h3 className="font-bold text-lg text-sky-800 flex items-center gap-2"><i className="fa-solid fa-circle-info"></i> ÖNEMLİ!</h3>
+                               <p className="text-sky-700 mt-1">Bu bölümdeki betikler, mevcut verilerinizi kaybetmeden veritabanı şemanızı günceller. Uygulamanızı güncel tutmak için yeni eklenen betikleri sırayla çalıştırmanız önerilir.</p>
+                            </div>
+                             {VERSION_UPDATES.length === 0 ? (
+                                <p className="text-slate-500 text-center py-8">Şu anda bekleyen bir veritabanı güncellemesi yok. Gelecekteki güncellemeler burada listelenecektir.</p>
+                            ) : (
+                                <div className="space-y-6">
+                                    {VERSION_UPDATES.map(update => (
+                                       <div key={update.version} className="border rounded-lg p-4">
+                                          <div className="flex justify-between items-center mb-2">
+                                             <h4 className="font-bold text-lg text-slate-800">Versiyon {update.version} ({update.date})</h4>
+                                             <CopyButton sqlToCopy={update.sql} message={`Versiyon ${update.version} Güncelleme Betiği Kopyalandı!`} />
+                                          </div>
+                                          <p className="text-slate-600 mb-4">{update.description}</p>
+                                          <div className="bg-slate-800 text-white p-2 rounded-md max-h-40 overflow-auto">
+                                             <pre><code className="text-sm font-mono whitespace-pre-wrap">{update.sql}</code></pre>
+                                          </div>
+                                       </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                <div className="mt-8 pt-6 border-t flex justify-end">
                     <button
                         onClick={handleCheckAgain}
                         disabled={loading}
@@ -690,7 +879,7 @@ const SetupPage: React.FC<{ onCheckAgain: () => void; reason: 'tables' | 'config
                         {loading ? (
                             <><i className="fa-solid fa-spinner fa-spin"></i> Kontrol Ediliyor...</>
                         ) : (
-                            <><i className="fa-solid fa-check-double"></i> Kurulumu Kontrol Et ve Başla</>
+                            <><i className="fa-solid fa-check-double"></i> Kurulumu Kontrol Et ve Devam Et</>
                         )}
                     </button>
                 </div>

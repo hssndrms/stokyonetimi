@@ -72,68 +72,79 @@ const CurrentStockReportPage: React.FC<{
     };
 
     const handleListClick = () => {
-        // 1. Determine the scope of products and locations based on filters.
+        // 1. Filter products based on UI filters.
         const relevantProducts = products.filter(p => 
             (!filters.productGroupId || p.group_id === filters.productGroupId) &&
             (!filters.productId || p.id === filters.productId)
         );
-
-        const relevantShelves = shelves.filter(s =>
-            (!filters.warehouseId || s.warehouse_id === filters.warehouseId) &&
-            (!filters.shelfId || s.id === filters.shelfId)
-        );
-
-        if (filters.warehouseId && relevantShelves.length === 0 && shelves.some(s => s.warehouse_id === filters.warehouseId)) {
-             // A specific shelf was selected that doesn't exist or doesn't match the warehouse, so relevantShelves is empty.
-             // This is an implicit filter, so the report should be empty.
-             setDisplayedData([]);
-             return;
+    
+        // 2. Determine all relevant locations (warehouse/shelf combinations, including shelfless).
+        type Location = { warehouse_id: string; shelf_id: string | null };
+        const relevantLocations: Location[] = [];
+    
+        const warehousesToConsider = filters.warehouseId
+            ? warehouses.filter(w => w.id === filters.warehouseId)
+            : warehouses;
+    
+        warehousesToConsider.forEach(warehouse => {
+            // Add the shelfless location for the warehouse
+            relevantLocations.push({ warehouse_id: warehouse.id, shelf_id: null });
+    
+            // Add all shelves for that warehouse
+            const shelvesForWarehouse = shelves.filter(s => s.warehouse_id === warehouse.id);
+            shelvesForWarehouse.forEach(shelf => {
+                relevantLocations.push({ warehouse_id: warehouse.id, shelf_id: shelf.id });
+            });
+        });
+    
+        // Now, filter these locations based on the specific shelf filter, if it exists.
+        let finalLocations = relevantLocations;
+        if (filters.shelfId) {
+            finalLocations = relevantLocations.filter(loc => loc.shelf_id === filters.shelfId);
         }
-
-        // 2. Create a complete list of all potential stock items within the scope.
-        // We iterate through products and shelves to include items with zero stock if requested.
-        const allPotentialItems: StockItem[] = [];
-        const stockItemsMap = new Map<string, StockItem>();
-        stockItems.forEach(si => stockItemsMap.set(`${si.product_id}-${si.shelf_id}`, si));
-
+    
+        // 3. Create a complete grid of all potential stock items (product x location).
+        // Use a map for efficient lookup of actual stock quantities.
+        const stockItemsMap = new Map<string, number>();
+        stockItems.forEach(si => {
+            const key = `${si.product_id}-${si.warehouse_id}-${si.shelf_id || 'null'}`;
+            stockItemsMap.set(key, si.quantity);
+        });
+    
+        let allPotentialItems: any[] = [];
         for (const product of relevantProducts) {
-            for (const shelf of relevantShelves) {
-                const key = `${product.id}-${shelf.id}`;
-                const existingItem = stockItemsMap.get(key);
+            for (const location of finalLocations) {
+                const key = `${product.id}-${location.warehouse_id}-${location.shelf_id || 'null'}`;
+                const quantity = stockItemsMap.get(key) || 0;
                 
-                if (existingItem) {
-                    allPotentialItems.push(existingItem);
-                } else {
-                    // This item has 0 stock because it doesn't exist in stockItems.
-                    allPotentialItems.push({
-                        product_id: product.id,
-                        warehouse_id: shelf.warehouse_id,
-                        shelf_id: shelf.id,
-                        quantity: 0
-                    });
-                }
+                allPotentialItems.push({
+                    product_id: product.id,
+                    warehouse_id: location.warehouse_id,
+                    shelf_id: location.shelf_id,
+                    quantity: quantity
+                });
             }
         }
         
-        // 3. Filter this complete list based on the `hideZeroStock` parameter.
+        // 4. Filter this complete list based on the `hideZeroStock` parameter.
         const dataToDisplay = hideZeroStock
             ? allPotentialItems.filter(item => item.quantity > 0)
             : allPotentialItems;
-
-        // 4. Map to the display format.
-        const mapper = (item: StockItem) => {
+    
+        // 5. Map to the display format.
+        const mapper = (item: any) => {
             const product = findById(products, item.product_id);
             const warehouse = findById(warehouses, item.warehouse_id);
-            const shelf = findById(shelves, item.shelf_id);
+            const shelf = findById(shelves, item.shelf_id); // shelf_id can be null, findById will return undefined, which is correct
             return {
                 "Depo": warehouse?.name,
-                "Raf": shelf?.name,
+                "Raf": shelf?.name || '-', // Show '-' for shelfless items
                 "Ürün Adı": product?.name,
                 "SKU": product?.sku,
                 "Miktar": `${Number(item.quantity).toLocaleString()} ${getUnitAbbr(item.product_id)}`
             };
         };
-
+    
         setDisplayedData(dataToDisplay.map(mapper));
     };
 
