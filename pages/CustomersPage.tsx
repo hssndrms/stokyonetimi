@@ -83,7 +83,10 @@ const AccountsPage: React.FC<{
                     { header: 'İletişim', key: 'contact' },
                 ]}
                 onAddItem={() => setModal({ type: 'ADD_ACCOUNT' })}
-                onEditItem={(item) => setModal({ type: 'EDIT_ACCOUNT', data: item })}
+                onEditItem={(item) => {
+                    const originalAccount = findById(accounts, item.id);
+                    setModal({ type: 'EDIT_ACCOUNT', data: originalAccount });
+                }}
                 onDeleteItem={(id) => {
                     const item = findById(accounts, id);
                     setModal({
