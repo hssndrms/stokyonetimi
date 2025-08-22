@@ -27,6 +27,7 @@ const StockMovementReportPage: React.FC<{
         productId: string;
         productGroupId: string;
         partyId: string;
+        notes: string;
     };
     
     const initialFilters: Filters = {
@@ -37,6 +38,7 @@ const StockMovementReportPage: React.FC<{
         productId: '',
         productGroupId: '',
         partyId: '',
+        notes: '',
     };
 
     const [filters, setFilters] = useState(initialFilters);
@@ -45,6 +47,7 @@ const StockMovementReportPage: React.FC<{
     const [availableProducts, setAvailableProducts] = useState<Product[]>(products);
     const [exportFormat, setExportFormat] = useState<'excel' | 'csv'>('excel');
     const { addToast } = useToast();
+    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' }>({ key: 'Kayıt Zamanı', direction: 'descending' });
 
     const getUnitAbbr = (productId: string) => findById(units, findById(products, productId)?.unit_id)?.abbreviation || '';
     
@@ -111,6 +114,9 @@ const StockMovementReportPage: React.FC<{
                 if (item.source_or_destination !== account?.name) {
                     return false;
                 }
+            }
+             if (filters.notes && !item.notes?.toLowerCase().includes(filters.notes.toLowerCase().trim())) {
+                return false;
             }
             if (filters.warehouseId) {
                 if (item.warehouse_id !== filters.warehouseId) {
@@ -200,22 +206,78 @@ const StockMovementReportPage: React.FC<{
                 });
             }
         });
-
-        finalReportData.sort((a,b) => new Date(b["Kayıt Zamanı"]).getTime() - new Date(a["Kayıt Zamanı"]).getTime());
+        
         setDisplayedData(finalReportData);
     };
 
+    const sortedData = useMemo(() => {
+        let sortableItems = [...displayedData];
+        if (sortConfig.key) {
+            sortableItems.sort((a, b) => {
+                const aValue = a[sortConfig.key];
+                const bValue = b[sortConfig.key];
+                
+                let valA: any = aValue;
+                let valB: any = bValue;
+
+                if (sortConfig.key === 'Miktar') {
+                    valA = parseFloat(String(aValue).replace(/[^0-9.]/g, '')) || 0;
+                    valB = parseFloat(String(bValue).replace(/[^0-9.]/g, '')) || 0;
+                } else if (sortConfig.key === 'Tarih' || sortConfig.key === 'Kayıt Zamanı' || sortConfig.key === 'Güncelleme Zamanı') {
+                     const parseDateTime = (dateTimeStr: string) => {
+                         if (!dateTimeStr || dateTimeStr === '-') return 0;
+                         // Handles 'D.M.YYYY, HH:mm:ss' and 'D/M/YYYY, HH:mm:ss'
+                         const parts = dateTimeStr.split(/[, ]+/);
+                         if (parts.length < 2) {
+                             // Handles only date 'D.M.YYYY' or 'D/M/YYYY'
+                            const dateParts = dateTimeStr.split(/[./]/);
+                            if (dateParts.length === 3) {
+                                return new Date(+dateParts[2], +dateParts[1] - 1, +dateParts[0]).getTime();
+                            }
+                             return new Date(dateTimeStr).getTime() || 0;
+                         }
+                         const dateParts = parts[0].split(/[./]/);
+                         const timeParts = parts[1].split(':');
+                         if(dateParts.length === 3 && timeParts.length === 3) {
+                            return new Date(+dateParts[2], +dateParts[1] - 1, +dateParts[0], +timeParts[0], +timeParts[1], +timeParts[2]).getTime();
+                         }
+                         return new Date(dateTimeStr).getTime() || 0;
+                    }
+                    valA = parseDateTime(aValue);
+                    valB = parseDateTime(bValue);
+                }
+                
+                if (valA < valB) {
+                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                }
+                if (valA > valB) {
+                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+        return sortableItems;
+    }, [displayedData, sortConfig]);
+
+    const requestSort = (key: string) => {
+        let direction: 'ascending' | 'descending' = 'ascending';
+        if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
+
     const handleExport = () => {
-        if(displayedData.length === 0) {
+        if(sortedData.length === 0) {
             addToast("Dışa aktarılacak veri yok.", 'error');
             return;
         }
 
         const filename = `Stok_Hareket_Raporu_${new Date().toISOString().slice(0,10)}`;
         if (exportFormat === 'excel') {
-            exportToExcel(filename, displayedData);
+            exportToExcel(filename, sortedData);
         } else {
-            exportToCsv(filename, displayedData);
+            exportToCsv(filename, sortedData);
         }
     }
     
@@ -257,6 +319,18 @@ const StockMovementReportPage: React.FC<{
                          <label className={formLabelClass}>Müşteri/Tedarikçi</label>
                          <SearchableSelect options={partyOptions} value={filters.partyId} onChange={(val) => handleFilterChange('partyId', val)} placeholder="Taraf Seçin"/>
                     </div>
+                     <div>
+                        <label htmlFor="notes" className={formLabelClass}>Not</label>
+                        <input
+                            type="text"
+                            name="notes"
+                            id="notes"
+                            value={filters.notes}
+                            onChange={e => handleFilterChange('notes', e.target.value)}
+                            className={formInputSmallClass}
+                            placeholder="Notlarda ara..."
+                        />
+                    </div>
                 </div>
                 <div className="flex justify-end items-center mt-4 pt-4 border-t">
                      <button onClick={handleListClick} className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-indigo-600 text-white hover:bg-indigo-700">
@@ -273,7 +347,7 @@ const StockMovementReportPage: React.FC<{
                             value={exportFormat} 
                             onChange={e => setExportFormat(e.target.value as 'excel' | 'csv')} 
                             className={formInputSmallClass}
-                            disabled={displayedData.length === 0}
+                            disabled={sortedData.length === 0}
                         >
                             <option value="excel">Excel'e Aktar</option>
                             <option value="csv">CSV'e Aktar</option>
@@ -281,22 +355,31 @@ const StockMovementReportPage: React.FC<{
                         <button 
                             onClick={handleExport} 
                             className="font-semibold py-2 px-4 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-600 text-white hover:bg-slate-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
-                            disabled={displayedData.length === 0}
+                            disabled={sortedData.length === 0}
                         >
                             Dışa Aktar
                         </button>
                     </div>
                 </div>
-                {displayedData.length > 0 ? (
+                {sortedData.length > 0 ? (
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm">
                             <thead>
                                 <tr className="border-b bg-slate-50">
-                                    {headers.map(header => <th key={header} className="p-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">{header}</th>)}
+                                    {headers.map(header => (
+                                        <th key={header} className="p-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                            <button onClick={() => requestSort(header)} className="w-full text-left flex items-center gap-1 hover:text-slate-800">
+                                                {header}
+                                                {sortConfig.key === header ? (
+                                                    sortConfig.direction === 'ascending' ? '▲' : '▼'
+                                                ) : null}
+                                            </button>
+                                        </th>
+                                    ))}
                                 </tr>
                             </thead>
                             <tbody>
-                               {displayedData.map((row, rowIndex) => (
+                               {sortedData.map((row, rowIndex) => (
                                     <tr key={rowIndex} className="border-b hover:bg-slate-50">
                                         {headers.map(header => {
                                             const cellValue = row[header];

@@ -5,7 +5,7 @@ import { getSupabaseCredentials, setSupabaseCredentials } from '../utils/supabas
 import { formInputClass, formLabelClass } from '../styles/common';
 
 const SETUP_SQL = `
--- Stok Takip Uygulaması Kurulum Betiği
+-- Stok Takip Uygulaması Kurulum Betiği v1.2.0
 -- Bu betik, uygulamanın ihtiyaç duyduğu tüm tabloları, fonksiyonları ve güvenlik kurallarını oluşturur.
 -- Supabase projenizdeki SQL Editor'e yapıştırıp çalıştırın.
 
@@ -304,7 +304,7 @@ END;
 $$;
 
 
--- Stok Giriş/Çıkış Hareketlerini İşleme Fonksiyonu (RAFLI/RAFSIZ DEPO DESTEĞİ İLE) - DÜZELTİLDİ
+-- Stok hareketlerini işleyen ana fonksiyon (v1.1.0)
 CREATE OR REPLACE FUNCTION public.process_stock_movement(
     p_product_id uuid,
     p_warehouse_id uuid,
@@ -314,7 +314,7 @@ CREATE OR REPLACE FUNCTION public.process_stock_movement(
 )
 RETURNS void LANGUAGE plpgsql AS $$
 DECLARE
-    current_quantity numeric;
+    rows_affected INT;
 BEGIN
     IF p_type = 'IN' THEN
         IF p_shelf_id IS NULL THEN
@@ -332,21 +332,19 @@ BEGIN
         END IF;
 
     ELSIF p_type = 'OUT' THEN
-        SELECT quantity INTO current_quantity
-        FROM public.stock_items
-        WHERE product_id = p_product_id 
-          AND warehouse_id = p_warehouse_id 
-          AND shelf_id IS NOT DISTINCT FROM p_shelf_id;
-
-        IF current_quantity IS NULL OR current_quantity < p_quantity THEN
-            RAISE EXCEPTION 'Yetersiz stok: Ürün ID %, Depo ID %, Raf ID %', p_product_id, p_warehouse_id, p_shelf_id;
-        END IF;
-
+        -- Stok düşürme işlemini atomik hale getir
         UPDATE public.stock_items
         SET quantity = quantity - p_quantity
         WHERE product_id = p_product_id 
           AND warehouse_id = p_warehouse_id 
-          AND shelf_id IS NOT DISTINCT FROM p_shelf_id;
+          AND shelf_id IS NOT DISTINCT FROM p_shelf_id
+          AND quantity >= p_quantity; -- Kontrolü UPDATE sorgusuna dahil et
+        
+        GET DIAGNOSTICS rows_affected = ROW_COUNT;
+
+        IF rows_affected = 0 THEN
+            RAISE EXCEPTION 'Yetersiz stok: Ürün ID %, Depo ID %, Raf ID %', p_product_id, p_warehouse_id, p_shelf_id;
+        END IF;
     END IF;
 END;
 $$;
@@ -468,101 +466,197 @@ END;
 $$;
 
 
--- Stok Fişi Silme Fonksiyonu
+-- Fiş silme (ve düzenleme sırasında geri alma) fonksiyonu (v1.1.0)
 CREATE OR REPLACE FUNCTION public.delete_stock_voucher(p_voucher_number text)
 RETURNS void LANGUAGE plpgsql AS $$
 DECLARE
     movement RECORD;
-    reverse_type TEXT;
+    rows_affected INT;
 BEGIN
-    FOR movement IN SELECT * FROM public.stock_movements WHERE voucher_number = p_voucher_number
+    -- Geri alma işlemlerinde, önce stok ekleyen (OUT iptali) sonra stok düşüren (IN iptali)
+    -- işlemleri yapmak daha güvenlidir. Bu yüzden hareketleri tipe göre sıralıyoruz.
+    FOR movement IN 
+        SELECT * FROM public.stock_movements 
+        WHERE voucher_number = p_voucher_number
+        ORDER BY type DESC -- 'OUT' ('IN' den önce gelir)
     LOOP
         IF movement.type = 'IN' THEN
-            reverse_type := 'OUT';
-        ELSE
-            reverse_type := 'IN';
-        END IF;
+            -- GİRİŞ hareketini geri almak, stok DÜŞÜRMEK demektir.
+            -- İşlemi atomik hale getirerek güvenliği artır.
+            UPDATE public.stock_items
+            SET quantity = quantity - movement.quantity
+            WHERE product_id = movement.product_id
+              AND warehouse_id = movement.warehouse_id
+              AND shelf_id IS NOT DISTINCT FROM movement.shelf_id
+              AND quantity >= movement.quantity;
+            
+            GET DIAGNOSTICS rows_affected = ROW_COUNT;
 
-        PERFORM public.process_stock_movement(
-            movement.product_id,
-            movement.warehouse_id,
-            movement.shelf_id,
-            movement.quantity,
-            reverse_type
-        );
+            IF rows_affected = 0 THEN
+                RAISE EXCEPTION 'Fiş güncellenemedi/silinemedi: İlgili stok başka bir işlemde kullanıldığı için yetersiz. (Ürün ID: %, Depo ID: %)', movement.product_id, movement.warehouse_id;
+            END IF;
+
+        ELSE -- movement.type = 'OUT'
+            -- ÇIKIŞ hareketini geri almak, stok EKLEMEK demektir.
+            -- Bu işlem her zaman güvenlidir, process_stock_movement 'IN' ile çağrılır.
+            PERFORM public.process_stock_movement(
+                movement.product_id,
+                movement.warehouse_id,
+                movement.shelf_id,
+                movement.quantity,
+                'IN'
+            );
+        END IF;
     END LOOP;
 
+    -- Tüm stok işlemleri başarılıysa hareket kayıtlarını sil
     DELETE FROM public.stock_movements WHERE voucher_number = p_voucher_number;
 END;
 $$;
 
 
--- Stok Giriş/Çıkış Fişi Düzenleme Fonksiyonu
+-- Stok Giriş/Çıkış Fişi Düzenleme Fonksiyonu (v1.2.0)
 CREATE OR REPLACE FUNCTION public.edit_stock_voucher(p_voucher_number text, header_data json, lines_data jsonb)
 RETURNS void LANGUAGE plpgsql AS $$
 DECLARE
     line JSONB;
     movement_type TEXT;
+    old_movements_summary JSONB;
+    new_movements_summary JSONB;
+    material_change BOOLEAN;
+    old_header RECORD;
 BEGIN
-    -- Önceki hareketleri geri al
-    PERFORM public.delete_stock_voucher(p_voucher_number);
+    -- 1. Eski hareketlerin bir özetini al (ürün ve miktar)
+    SELECT jsonb_agg(jsonb_build_object('product_id', product_id, 'quantity', quantity) ORDER BY product_id)
+    INTO old_movements_summary
+    FROM public.stock_movements
+    WHERE voucher_number = p_voucher_number;
 
-    movement_type := header_data->>'type';
+    -- 2. Gelen yeni satırların bir özetini oluştur
+    SELECT jsonb_agg(jsonb_build_object('product_id', (l->>'product_id')::uuid, 'quantity', (l->>'quantity')::numeric) ORDER BY (l->>'product_id'))
+    INTO new_movements_summary
+    FROM jsonb_array_elements(lines_data) as l;
     
-    IF movement_type IS NULL OR (movement_type <> 'IN' AND movement_type <> 'OUT') THEN
-        RAISE EXCEPTION 'Geçersiz hareket tipi sağlandı: %', movement_type;
+    -- 3. Eski başlık bilgilerini al ve karşılaştır
+    SELECT warehouse_id, shelf_id, type
+    INTO old_header
+    FROM public.stock_movements 
+    WHERE voucher_number = p_voucher_number LIMIT 1;
+    
+    material_change := NOT (
+        old_movements_summary IS NOT DISTINCT FROM new_movements_summary AND
+        old_header.warehouse_id = (header_data->>'warehouse_id')::uuid AND
+        old_header.shelf_id IS NOT DISTINCT FROM (header_data->>'shelf_id')::uuid AND
+        old_header.type = (header_data->>'type')::text
+    );
+
+    -- 4. Değişikliğin türüne göre işlem yap
+    IF material_change THEN
+        -- Miktarı veya konumu etkileyen bir değişiklik var: Eski hareketleri sil ve yenilerini oluştur
+        PERFORM public.delete_stock_voucher(p_voucher_number);
+
+        movement_type := header_data->>'type';
+        IF movement_type IS NULL OR (movement_type <> 'IN' AND movement_type <> 'OUT') THEN
+            RAISE EXCEPTION 'Geçersiz hareket tipi: %', movement_type;
+        END IF;
+
+        -- Yeni hareketleri ekle
+        FOR line IN SELECT * FROM jsonb_array_elements(lines_data)
+        LOOP
+            INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes)
+            VALUES (
+                p_voucher_number,
+                (line->>'product_id')::uuid,
+                (line->>'quantity')::numeric,
+                (header_data->>'warehouse_id')::uuid,
+                (header_data->>'shelf_id')::uuid,
+                movement_type,
+                (header_data->>'date')::date,
+                header_data->>'source_or_destination',
+                header_data->>'notes'
+            );
+
+            PERFORM public.process_stock_movement(
+                (line->>'product_id')::uuid,
+                (header_data->>'warehouse_id')::uuid,
+                (header_data->>'shelf_id')::uuid,
+                (line->>'quantity')::numeric,
+                movement_type
+            );
+        END LOOP;
+    ELSE
+        -- Sadece başlık bilgileri (tarih, not vb.) değişti: Sadece güncelle, stok işlemi yapma
+        UPDATE public.stock_movements
+        SET 
+            date = (header_data->>'date')::date,
+            source_or_destination = header_data->>'source_or_destination',
+            notes = header_data->>'notes'
+        WHERE voucher_number = p_voucher_number;
     END IF;
-
-    -- Yeni hareketleri ekle
-    FOR line IN SELECT * FROM jsonb_array_elements(lines_data)
-    LOOP
-        INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes)
-        VALUES (
-            p_voucher_number,
-            (line->>'product_id')::uuid,
-            (line->>'quantity')::numeric,
-            (header_data->>'warehouse_id')::uuid,
-            (header_data->>'shelf_id')::uuid,
-            movement_type,
-            (header_data->>'date')::date,
-            header_data->>'source_or_destination',
-            header_data->>'notes'
-        );
-
-        PERFORM public.process_stock_movement(
-            (line->>'product_id')::uuid,
-            (header_data->>'warehouse_id')::uuid,
-            (header_data->>'shelf_id')::uuid,
-            (line->>'quantity')::numeric,
-            movement_type
-        );
-    END LOOP;
 END;
 $$;
 
 
--- Stok Transfer Fişi Düzenleme Fonksiyonu
+-- Stok Transfer Fişi Düzenleme Fonksiyonu (v1.2.0)
 CREATE OR REPLACE FUNCTION public.edit_stock_transfer(p_voucher_number text, header_data json, lines_data jsonb)
 RETURNS void LANGUAGE plpgsql AS $$
 DECLARE
     line JSONB;
+    old_lines_summary JSONB;
+    new_lines_summary JSONB;
+    material_change BOOLEAN;
+    old_out_header RECORD;
+    old_in_header RECORD;
 BEGIN
-    -- Önceki hareketleri geri al
-    PERFORM public.delete_stock_voucher(p_voucher_number);
+    -- 1. Eski hareketlerin bir özetini al
+    SELECT jsonb_agg(jsonb_build_object('product_id', product_id, 'quantity', quantity) ORDER BY product_id)
+    INTO old_lines_summary
+    FROM public.stock_movements
+    WHERE voucher_number = p_voucher_number AND type = 'OUT';
 
-    -- Yeni hareketleri ekle
-    FOR line IN SELECT * FROM jsonb_array_elements(lines_data)
-    LOOP
-        -- Çıkış
-        INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes)
-        VALUES (p_voucher_number, (line->>'product_id')::uuid, (line->>'quantity')::numeric, (header_data->>'source_warehouse_id')::uuid, (header_data->>'source_shelf_id')::uuid, 'OUT', (header_data->>'date')::date, 'Transfer', header_data->>'notes');
-        PERFORM public.process_stock_movement((line->>'product_id')::uuid, (header_data->>'source_warehouse_id')::uuid, (header_data->>'source_shelf_id')::uuid, (line->>'quantity')::numeric, 'OUT');
+    -- 2. Gelen yeni satırların bir özetini oluştur
+    SELECT jsonb_agg(jsonb_build_object('product_id', (l->>'product_id')::uuid, 'quantity', (l->>'quantity')::numeric) ORDER BY (l->>'product_id'))
+    INTO new_lines_summary
+    FROM jsonb_array_elements(lines_data) as l;
 
-        -- Giriş (DÜZELTİLDİ: hedef depo ve raf kullanılıyor)
-        INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes)
-        VALUES (p_voucher_number, (line->>'product_id')::uuid, (line->>'quantity')::numeric, (header_data->>'dest_warehouse_id')::uuid, (header_data->>'dest_shelf_id')::uuid, 'IN', (header_data->>'date')::date, 'Transfer', header_data->>'notes');
-        PERFORM public.process_stock_movement((line->>'product_id')::uuid, (header_data->>'dest_warehouse_id')::uuid, (header_data->>'dest_shelf_id')::uuid, (line->>'quantity')::numeric, 'IN');
-    END LOOP;
+    -- 3. Eski başlık bilgilerini al ve karşılaştır
+    SELECT warehouse_id, shelf_id INTO old_out_header FROM public.stock_movements WHERE voucher_number = p_voucher_number AND type = 'OUT' LIMIT 1;
+    SELECT warehouse_id, shelf_id INTO old_in_header FROM public.stock_movements WHERE voucher_number = p_voucher_number AND type = 'IN' LIMIT 1;
+
+    material_change := NOT (
+        old_lines_summary IS NOT DISTINCT FROM new_lines_summary AND
+        old_out_header.warehouse_id = (header_data->>'source_warehouse_id')::uuid AND
+        old_out_header.shelf_id IS NOT DISTINCT FROM (header_data->>'source_shelf_id')::uuid AND
+        old_in_header.warehouse_id = (header_data->>'dest_warehouse_id')::uuid AND
+        old_in_header.shelf_id IS NOT DISTINCT FROM (header_data->>'dest_shelf_id')::uuid
+    );
+    
+    -- 4. Değişikliğin türüne göre işlem yap
+    IF material_change THEN
+        -- Miktarı veya konumu etkileyen bir değişiklik var: Eski hareketleri sil ve yenilerini oluştur
+        PERFORM public.delete_stock_voucher(p_voucher_number);
+
+        -- Yeni hareketleri ekle
+        FOR line IN SELECT * FROM jsonb_array_elements(lines_data)
+        LOOP
+            -- Çıkış
+            INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes)
+            VALUES (p_voucher_number, (line->>'product_id')::uuid, (line->>'quantity')::numeric, (header_data->>'source_warehouse_id')::uuid, (header_data->>'source_shelf_id')::uuid, 'OUT', (header_data->>'date')::date, 'Transfer', header_data->>'notes');
+            PERFORM public.process_stock_movement((line->>'product_id')::uuid, (header_data->>'source_warehouse_id')::uuid, (header_data->>'source_shelf_id')::uuid, (line->>'quantity')::numeric, 'OUT');
+
+            -- Giriş
+            INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes)
+            VALUES (p_voucher_number, (line->>'product_id')::uuid, (line->>'quantity')::numeric, (header_data->>'dest_warehouse_id')::uuid, (header_data->>'dest_shelf_id')::uuid, 'IN', (header_data->>'date')::date, 'Transfer', header_data->>'notes');
+            PERFORM public.process_stock_movement((line->>'product_id')::uuid, (header_data->>'dest_warehouse_id')::uuid, (header_data->>'dest_shelf_id')::uuid, (line->>'quantity')::numeric, 'IN');
+        END LOOP;
+    ELSE
+        -- Sadece başlık bilgileri (tarih, not vb.) değişti: Sadece güncelle, stok işlemi yapma
+        UPDATE public.stock_movements
+        SET 
+            date = (header_data->>'date')::date,
+            notes = header_data->>'notes'
+        WHERE voucher_number = p_voucher_number;
+    END IF;
 END;
 $$;
 `;
@@ -574,9 +668,273 @@ interface VersionUpdate {
   sql: string;
 }
 
+const V1_1_0_UPDATE_SQL = `-- Stok Takip Uygulaması Veritabanı Güncellemesi v1.1.0
+-- AÇIKLAMA: Bu betik, stok güncelleme ve silme işlemlerindeki bir "race condition" (yarış durumu) hatasını düzeltir.
+-- Bu hata, nadir durumlarda stok miktarının eksiye düşmesine ve veritabanı hatasına yol açabiliyordu.
+-- Bu güncelleme, stok düşürme işlemlerini atomik hale getirerek sorunu çözer ve fiş düzenleme/silme
+-- işlemlerinin güvenilirliğini artırır. Mevcut verilerinizi ETKİLEMEZ.
+
+-- 1. Stok hareketlerini işleyen ana fonksiyonu güncelle
+CREATE OR REPLACE FUNCTION public.process_stock_movement(
+    p_product_id uuid,
+    p_warehouse_id uuid,
+    p_shelf_id uuid,
+    p_quantity numeric,
+    p_type text
+)
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+    rows_affected INT;
+BEGIN
+    IF p_type = 'IN' THEN
+        IF p_shelf_id IS NULL THEN
+             -- Rafsız depo için stok ekle/güncelle
+             INSERT INTO public.stock_items (product_id, warehouse_id, shelf_id, quantity)
+             VALUES (p_product_id, p_warehouse_id, NULL, p_quantity)
+             ON CONFLICT (product_id, warehouse_id) WHERE shelf_id IS NULL
+             DO UPDATE SET quantity = stock_items.quantity + EXCLUDED.quantity;
+        ELSE
+             -- Raflı depo için stok ekle/güncelle
+             INSERT INTO public.stock_items (product_id, warehouse_id, shelf_id, quantity)
+             VALUES (p_product_id, p_warehouse_id, p_shelf_id, p_quantity)
+             ON CONFLICT (product_id, warehouse_id, shelf_id) WHERE shelf_id IS NOT NULL
+             DO UPDATE SET quantity = stock_items.quantity + EXCLUDED.quantity;
+        END IF;
+
+    ELSIF p_type = 'OUT' THEN
+        -- Stok düşürme işlemini atomik hale getir
+        UPDATE public.stock_items
+        SET quantity = quantity - p_quantity
+        WHERE product_id = p_product_id 
+          AND warehouse_id = p_warehouse_id 
+          AND shelf_id IS NOT DISTINCT FROM p_shelf_id
+          AND quantity >= p_quantity; -- Kontrolü UPDATE sorgusuna dahil et
+        
+        GET DIAGNOSTICS rows_affected = ROW_COUNT;
+
+        IF rows_affected = 0 THEN
+            RAISE EXCEPTION 'Yetersiz stok: Ürün ID %, Depo ID %, Raf ID %', p_product_id, p_warehouse_id, p_shelf_id;
+        END IF;
+    END IF;
+END;
+$$;
+
+
+-- 2. Fiş silme (ve düzenleme sırasında geri alma) fonksiyonunu güncelle
+CREATE OR REPLACE FUNCTION public.delete_stock_voucher(p_voucher_number text)
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+    movement RECORD;
+    rows_affected INT;
+BEGIN
+    -- Geri alma işlemlerinde, önce stok ekleyen (OUT iptali) sonra stok düşüren (IN iptali)
+    -- işlemleri yapmak daha güvenlidir. Bu yüzden hareketleri tipe göre sıralıyoruz.
+    FOR movement IN 
+        SELECT * FROM public.stock_movements 
+        WHERE voucher_number = p_voucher_number
+        ORDER BY type DESC -- 'OUT' ('IN' den önce gelir)
+    LOOP
+        IF movement.type = 'IN' THEN
+            -- GİRİŞ hareketini geri almak, stok DÜŞÜRMEK demektir.
+            -- İşlemi atomik hale getirerek güvenliği artır.
+            UPDATE public.stock_items
+            SET quantity = quantity - movement.quantity
+            WHERE product_id = movement.product_id
+              AND warehouse_id = movement.warehouse_id
+              AND shelf_id IS NOT DISTINCT FROM movement.shelf_id
+              AND quantity >= movement.quantity;
+            
+            GET DIAGNOSTICS rows_affected = ROW_COUNT;
+
+            IF rows_affected = 0 THEN
+                RAISE EXCEPTION 'Fiş güncellenemedi/silinemedi: İlgili stok başka bir işlemde kullanıldığı için yetersiz. (Ürün ID: %, Depo ID: %)', movement.product_id, movement.warehouse_id;
+            END IF;
+
+        ELSE -- movement.type = 'OUT'
+            -- ÇIKIŞ hareketini geri almak, stok EKLEMEK demektir.
+            -- Bu işlem her zaman güvenlidir, process_stock_movement 'IN' ile çağrılır.
+            PERFORM public.process_stock_movement(
+                movement.product_id,
+                movement.warehouse_id,
+                movement.shelf_id,
+                movement.quantity,
+                'IN'
+            );
+        END IF;
+    END LOOP;
+
+    -- Tüm stok işlemleri başarılıysa hareket kayıtlarını sil
+    DELETE FROM public.stock_movements WHERE voucher_number = p_voucher_number;
+END;
+$$;`;
+
+const V1_2_0_UPDATE_SQL = `-- Stok Takip Uygulaması Veritabanı Güncellemesi v1.2.0
+-- AÇIKLAMA: Bu betik, fiş düzenleme mantığını optimize eder.
+-- Artık, bir fişte sadece not veya tarih gibi stok miktarını etkilemeyen alanlar değiştirildiğinde,
+-- gereksiz stok kontrolleri yapılmayacaktır. Bu, özellikle geçmiş tarihli bir fiş üzerinde
+-- küçük bir değişiklik yapıldığında karşılaşılan "yetersiz stok" hatasını önler.
+-- Bu güncelleme mevcut verilerinizi ETKİLEMEZ ve fiş düzenleme deneyimini iyileştirir.
+
+-- 1. Stok Giriş/Çıkış Fişi Düzenleme Fonksiyonunu Güncelle
+CREATE OR REPLACE FUNCTION public.edit_stock_voucher(p_voucher_number text, header_data json, lines_data jsonb)
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+    line JSONB;
+    movement_type TEXT;
+    old_movements_summary JSONB;
+    new_movements_summary JSONB;
+    material_change BOOLEAN;
+    old_header RECORD;
+BEGIN
+    -- 1. Eski hareketlerin bir özetini al (ürün ve miktar)
+    SELECT jsonb_agg(jsonb_build_object('product_id', product_id, 'quantity', quantity) ORDER BY product_id)
+    INTO old_movements_summary
+    FROM public.stock_movements
+    WHERE voucher_number = p_voucher_number;
+
+    -- 2. Gelen yeni satırların bir özetini oluştur
+    SELECT jsonb_agg(jsonb_build_object('product_id', (l->>'product_id')::uuid, 'quantity', (l->>'quantity')::numeric) ORDER BY (l->>'product_id'))
+    INTO new_movements_summary
+    FROM jsonb_array_elements(lines_data) as l;
+    
+    -- 3. Eski başlık bilgilerini al ve karşılaştır
+    SELECT warehouse_id, shelf_id, type
+    INTO old_header
+    FROM public.stock_movements 
+    WHERE voucher_number = p_voucher_number LIMIT 1;
+    
+    material_change := NOT (
+        old_movements_summary IS NOT DISTINCT FROM new_movements_summary AND
+        old_header.warehouse_id = (header_data->>'warehouse_id')::uuid AND
+        old_header.shelf_id IS NOT DISTINCT FROM (header_data->>'shelf_id')::uuid AND
+        old_header.type = (header_data->>'type')::text
+    );
+
+    -- 4. Değişikliğin türüne göre işlem yap
+    IF material_change THEN
+        -- Miktarı veya konumu etkileyen bir değişiklik var: Eski hareketleri sil ve yenilerini oluştur
+        PERFORM public.delete_stock_voucher(p_voucher_number);
+
+        movement_type := header_data->>'type';
+        IF movement_type IS NULL OR (movement_type <> 'IN' AND movement_type <> 'OUT') THEN
+            RAISE EXCEPTION 'Geçersiz hareket tipi: %', movement_type;
+        END IF;
+
+        -- Yeni hareketleri ekle
+        FOR line IN SELECT * FROM jsonb_array_elements(lines_data)
+        LOOP
+            INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes)
+            VALUES (
+                p_voucher_number,
+                (line->>'product_id')::uuid,
+                (line->>'quantity')::numeric,
+                (header_data->>'warehouse_id')::uuid,
+                (header_data->>'shelf_id')::uuid,
+                movement_type,
+                (header_data->>'date')::date,
+                header_data->>'source_or_destination',
+                header_data->>'notes'
+            );
+
+            PERFORM public.process_stock_movement(
+                (line->>'product_id')::uuid,
+                (header_data->>'warehouse_id')::uuid,
+                (header_data->>'shelf_id')::uuid,
+                (line->>'quantity')::numeric,
+                movement_type
+            );
+        END LOOP;
+    ELSE
+        -- Sadece başlık bilgileri (tarih, not vb.) değişti: Sadece güncelle, stok işlemi yapma
+        UPDATE public.stock_movements
+        SET 
+            date = (header_data->>'date')::date,
+            source_or_destination = header_data->>'source_or_destination',
+            notes = header_data->>'notes'
+        WHERE voucher_number = p_voucher_number;
+    END IF;
+END;
+$$;
+
+
+-- 2. Stok Transfer Fişi Düzenleme Fonksiyonunu Güncelle
+CREATE OR REPLACE FUNCTION public.edit_stock_transfer(p_voucher_number text, header_data json, lines_data jsonb)
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+    line JSONB;
+    old_lines_summary JSONB;
+    new_lines_summary JSONB;
+    material_change BOOLEAN;
+    old_out_header RECORD;
+    old_in_header RECORD;
+BEGIN
+    -- 1. Eski hareketlerin bir özetini al
+    SELECT jsonb_agg(jsonb_build_object('product_id', product_id, 'quantity', quantity) ORDER BY product_id)
+    INTO old_lines_summary
+    FROM public.stock_movements
+    WHERE voucher_number = p_voucher_number AND type = 'OUT';
+
+    -- 2. Gelen yeni satırların bir özetini oluştur
+    SELECT jsonb_agg(jsonb_build_object('product_id', (l->>'product_id')::uuid, 'quantity', (l->>'quantity')::numeric) ORDER BY (l->>'product_id'))
+    INTO new_lines_summary
+    FROM jsonb_array_elements(lines_data) as l;
+
+    -- 3. Eski başlık bilgilerini al ve karşılaştır
+    SELECT warehouse_id, shelf_id INTO old_out_header FROM public.stock_movements WHERE voucher_number = p_voucher_number AND type = 'OUT' LIMIT 1;
+    SELECT warehouse_id, shelf_id INTO old_in_header FROM public.stock_movements WHERE voucher_number = p_voucher_number AND type = 'IN' LIMIT 1;
+
+    material_change := NOT (
+        old_lines_summary IS NOT DISTINCT FROM new_lines_summary AND
+        old_out_header.warehouse_id = (header_data->>'source_warehouse_id')::uuid AND
+        old_out_header.shelf_id IS NOT DISTINCT FROM (header_data->>'source_shelf_id')::uuid AND
+        old_in_header.warehouse_id = (header_data->>'dest_warehouse_id')::uuid AND
+        old_in_header.shelf_id IS NOT DISTINCT FROM (header_data->>'dest_shelf_id')::uuid
+    );
+    
+    -- 4. Değişikliğin türüne göre işlem yap
+    IF material_change THEN
+        -- Miktarı veya konumu etkileyen bir değişiklik var: Eski hareketleri sil ve yenilerini oluştur
+        PERFORM public.delete_stock_voucher(p_voucher_number);
+
+        -- Yeni hareketleri ekle
+        FOR line IN SELECT * FROM jsonb_array_elements(lines_data)
+        LOOP
+            -- Çıkış
+            INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes)
+            VALUES (p_voucher_number, (line->>'product_id')::uuid, (line->>'quantity')::numeric, (header_data->>'source_warehouse_id')::uuid, (header_data->>'source_shelf_id')::uuid, 'OUT', (header_data->>'date')::date, 'Transfer', header_data->>'notes');
+            PERFORM public.process_stock_movement((line->>'product_id')::uuid, (header_data->>'source_warehouse_id')::uuid, (header_data->>'source_shelf_id')::uuid, (line->>'quantity')::numeric, 'OUT');
+
+            -- Giriş
+            INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes)
+            VALUES (p_voucher_number, (line->>'product_id')::uuid, (line->>'quantity')::numeric, (header_data->>'dest_warehouse_id')::uuid, (header_data->>'dest_shelf_id')::uuid, 'IN', (header_data->>'date')::date, 'Transfer', header_data->>'notes');
+            PERFORM public.process_stock_movement((line->>'product_id')::uuid, (header_data->>'dest_warehouse_id')::uuid, (header_data->>'dest_shelf_id')::uuid, (line->>'quantity')::numeric, 'IN');
+        END LOOP;
+    ELSE
+        -- Sadece başlık bilgileri (tarih, not vb.) değişti: Sadece güncelle, stok işlemi yapma
+        UPDATE public.stock_movements
+        SET 
+            date = (header_data->>'date')::date,
+            notes = header_data->>'notes'
+        WHERE voucher_number = p_voucher_number;
+    END IF;
+END;
+$$;`;
+
+
 // Gelecekteki veritabanı güncellemeleri bu diziye eklenecektir.
 const VERSION_UPDATES: VersionUpdate[] = [
-    
+    {
+        version: '1.2.0',
+        date: new Date().toLocaleDateString('tr-TR'),
+        description: `Fiş düzenleme optimizasyonu. Artık sadece not/tarih gibi stoğu etkilemeyen alanlar güncellendiğinde gereksiz stok kontrolleri yapılmaz, bu da "yetersiz stok" hatasını önler.`,
+        sql: V1_2_0_UPDATE_SQL,
+    },
+    {
+        version: '1.1.0',
+        date: new Date().toLocaleDateString('tr-TR'),
+        description: `Bu güncelleme, fiş düzenleme ve silme işlemlerinde yaşanan "check constraint" hatasını giderir. Stok düşürme mantığını daha güvenli hale getirerek, stoğun eksiye düşme olasılığını ortadan kaldırır.`,
+        sql: V1_1_0_UPDATE_SQL,
+    }
 ].sort((a, b) => b.version.localeCompare(a.version, undefined, { numeric: true }));
 
 
