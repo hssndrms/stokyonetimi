@@ -56,7 +56,7 @@ const DashboardPage: React.FC<{
                             {recentMovements.map(m => (
                                 <tr key={m.id} className="border-b">
                                     <td className="p-4 align-middle text-slate-700">{new Date(m.date).toLocaleDateString()}</td>
-                                    <td className="p-4 align-middle text-slate-700 font-mono text-xs">{m.voucher_number}</td>
+                                    <td className="p-4 align-middle text-slate-700 font-mono">{m.voucher_number}</td>
                                     <td className="p-4 align-middle text-slate-700">{getProductName(m.product_id)}</td>
                                     <td className="p-4 align-middle text-slate-700">
                                         <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${m.type === 'IN' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
