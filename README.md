@@ -1,4 +1,3 @@
-
 # Stok Takip Uygulaması (Supabase ile)
 
 Bu proje, modern ve kullanıcı dostu bir arayüze sahip, çoklu depo ve raf yönetimini destekleyen, verilerini bulutta Supabase üzerinde depolayan bir stok takip uygulamasıdır.
@@ -23,7 +22,6 @@ Bu proje, modern ve kullanıcı dostu bir arayüze sahip, çoklu depo ve raf yö
 
 - **Frontend:** React, TypeScript, Tailwind CSS
 - **Veritabanı & Backend:** [Supabase](https://supabase.com/) (PostgreSQL)
-- **Geliştirme Ortamı & Derleyici:** [Vite](https://vitejs.dev/)
 - **Paket Yöneticisi:** npm
 
 ---
@@ -36,6 +34,7 @@ Projeyi kendi bilgisayarınızda çalıştırıp geliştirmek için aşağıdaki
 
 - [Node.js](https://nodejs.org/) (LTS versiyonu önerilir)
 - [npm](https://www.npmjs.com/) (Node.js ile birlikte gelir)
+- [Git](https://git-scm.com/)
 
 ### 2. Supabase Projesi Oluşturma
 
@@ -48,33 +47,80 @@ Projeyi kendi bilgisayarınızda çalıştırıp geliştirmek için aşağıdaki
 
 ### 3. Projeyi Bilgisayara İndirme ve Ayarlama
 
-1.  **Projeyi Klonlayın:**
-    ```bash
-    git clone https://github.com/kullanici-adiniz/proje-repo-adi.git
-    cd proje-repo-adi
-    ```
+Aşağıda işletim sisteminize uygun adımları takip edebilirsiniz.
 
-2.  **Gerekli Paketleri Yükleyin:**
+---
+
+#### 🖥️ **Windows Kurulumu**
+
+1.  **Komut İstemi'ni Açın:**
+    -   Başlat menüsünü açın, `cmd` yazın ve "Komut İstemi" (Command Prompt) uygulamasını çalıştırın.
+
+2.  **Projeyi Klonlayın:**
+    -   Çalışmak istediğiniz bir klasöre gidin (örneğin, `cd Belgeler`) ve aşağıdaki komutu çalıştırın:
+        ```bash
+        git clone https://github.com/kullanici-adiniz/proje-repo-adi.git
+        cd proje-repo-adi
+        ```
+      *(Not: `kullanici-adiniz/proje-repo-adi` kısmını kendi GitHub bilgilerinizle güncelleyin.)*
+
+3.  **Gerekli Paketleri Yükleyin:**
     ```bash
     npm install
     ```
 
-3.  **Ortam Değişkenlerini Ayarlayın:**
-    - Projenin ana dizininde `.env` adında yeni bir dosya oluşturun.
-    - Supabase'den aldığınız bilgileri bu dosyaya aşağıdaki formatta ekleyin:
-      ```
-      VITE_SUPABASE_URL="https://PROJE_ID.supabase.co"
-      VITE_SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_PUBLIC_KEY"
-      ```
+4.  **Ortam Değişkenleri Dosyasını Oluşturun (`.env`):**
+    -   Komut İstemi'nde, projenin ana dizinindeyken şu komutu çalıştırın:
+        ```bash
+        copy NUL .env
+        ```
+    -   Bu komut, `.env` adında boş bir dosya oluşturacaktır. Dosyayı Visual Studio Code veya Not Defteri gibi bir metin düzenleyici ile açın.
 
-4.  **Geliştirme Sunucusunu Başlatın:**
+5.  **Uygulamayı Çalıştırın:**
+    -   Uygulamayı çalıştırdığınızda, sizden Supabase URL ve Anon Key bilgilerini isteyecektir. Bu bilgileri web arayüzü üzerinden girerek kurulumu tamamlayabilirsiniz.
+
+6.  **Geliştirme Sunucusunu Başlatın:**
     ```bash
     npm run dev
     ```
-    Bu komut, projeyi geliştirme modunda çalıştırır. Terminalde belirtilen adresi (genellikle `http://localhost:5173`) tarayıcınızda açarak uygulamayı görüntüleyebilirsiniz.
 
 ---
 
+#### 🍏 **macOS Kurulumu**
+
+1.  **Terminal'i Açın:**
+    -   `Applications > Utilities` klasöründen veya Spotlight aramasına (`Cmd + Space`) `Terminal` yazarak uygulamayı açın.
+
+2.  **Projeyi Klonlayın:**
+    -   Çalışmak istediğiniz bir klasöre gidin (örneğin, `cd ~/Documents`) ve aşağıdaki komutu çalıştırın:
+        ```bash
+        git clone https://github.com/kullanici-adiniz/proje-repo-adi.git
+        cd proje-repo-adi
+        ```
+       *(Not: `kullanici-adiniz/proje-repo-adi` kısmını kendi GitHub bilgilerinizle güncelleyin.)*
+
+3.  **Gerekli Paketleri Yükleyin:**
+    ```bash
+    npm install
+    ```
+
+4.  **Ortam Değişkenleri Dosyasını Oluşturun (`.env`):**
+    -   Terminal'de, projenin ana dizinindeyken şu komutu çalıştırın:
+        ```bash
+        touch .env
+        ```
+    -   Bu komut, `.env` adında boş bir dosya oluşturacaktır.
+
+5.  **Uygulamayı Çalıştırın:**
+    -   Uygulamayı çalıştırdığınızda, sizden Supabase URL ve Anon Key bilgilerini isteyecektir. Bu bilgileri web arayüzü üzerinden girerek kurulumu tamamlayabilirsiniz.
+
+
+6.  **Geliştirme Sunucusunu Başlatın:**
+    ```bash
+    npm run dev
+    ```
+
+---
 ## 📦 Derleme ve Dağıtım (Build & Deployment)
 
 Uygulamanızı tamamladığınızda, kullanıcılarınızın erişebilmesi için canlıya almanız gerekir.
@@ -92,7 +138,7 @@ Uygulamanızı tamamladığınızda, kullanıcılarınızın erişebilmesi için
 Oluşturulan `dist` klasörünün içeriği artık bir web sunucusunda barındırılmaya hazırdır. Bu dosyaları aşağıdaki gibi platformlara kolayca yükleyebilirsiniz:
 
 -   **Statik Hosting Servisleri (Önerilen):** [Netlify](https://www.netlify.com/), [Vercel](https://vercel.com/), [GitHub Pages](https://pages.github.com/) gibi servisler, `dist` klasörünü sürükleyip bırakarak veya bir Git reposuna bağlayarak projenizi saniyeler içinde yayınlamanıza olanak tanır.
--   **Geleneksel Sunucular:** `dist` klasörünün içindeki tüm dosyaları Nginx veya Apache gibi bir web sunucusunun hizmet verdiği dizine kopyalayarak da dağıtım yapabilirsiniz.
+-   **Gelenşeksel Sunucular:** `dist` klasörünün içindeki tüm dosyaları Nginx veya Apache gibi bir web sunucusunun hizmet verdiği dizine kopyalayarak da dağıtım yapabilirsiniz.
 
 Uygulama, `dist` klasörü içindeki `index.html` dosyası üzerinden çalışacaktır.
 
