@@ -24,13 +24,18 @@ const StockOverviewPage: React.FC<{
             }>;
         }> = {};
 
-        const filteredStockItems = stockItems.filter(item => {
-            if (!searchTerm) return true;
-            const product = findById(products, item.product_id);
-            if (!product) return false;
-            return product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                   product.sku.toLowerCase().includes(searchTerm.toLowerCase());
-        });
+        // Sadece stokta olan ürünleri filtrele (miktarı 0'dan büyük olanlar)
+        const itemsWithStock = stockItems.filter(item => item.quantity > 0);
+
+        const filteredStockItems = searchTerm
+            ? itemsWithStock.filter(item => {
+                const product = findById(products, item.product_id);
+                if (!product) return false;
+                return product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                       product.sku.toLowerCase().includes(searchTerm.toLowerCase());
+            })
+            : itemsWithStock;
+
 
         if (searchTerm && filteredStockItems.length > 0) {
             const newExpanded: Record<string, boolean> = {};
@@ -44,8 +49,6 @@ const StockOverviewPage: React.FC<{
         }
 
         for (const item of filteredStockItems) {
-            if(item.quantity === 0) continue;
-
             const warehouse = findById(warehouses, item.warehouse_id);
             if (!warehouse) continue;
 

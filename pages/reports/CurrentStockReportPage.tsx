@@ -35,6 +35,7 @@ const CurrentStockReportPage: React.FC<{
     const [availableShelves, setAvailableShelves] = useState<Shelf[]>([]);
     const [availableProducts, setAvailableProducts] = useState<Product[]>(products);
     const [exportFormat, setExportFormat] = useState<'excel' | 'csv'>('excel');
+    const [hideZeroStock, setHideZeroStock] = useState(true);
     const { addToast } = useToast();
 
     const getUnitAbbr = (productId: string) => findById(units, findById(products, productId)?.unit_id)?.abbreviation || '';
@@ -71,26 +72,69 @@ const CurrentStockReportPage: React.FC<{
     };
 
     const handleListClick = () => {
-         const filterPredicate = (item: StockItem): boolean => {
-            if (filters.warehouseId && item.warehouse_id !== filters.warehouseId) return false;
-            if (filters.shelfId && item.shelf_id !== filters.shelfId) return false;
-            if (filters.productId && item.product_id !== filters.productId) return false;
-            if (filters.productGroupId) {
-                const product = findById(products, item.product_id);
-                if (!product || product.group_id !== filters.productGroupId) return false;
-            }
-            return true;
-        };
-        const data = stockItems.filter(filterPredicate);
+        // 1. Determine the scope of products and locations based on filters.
+        const relevantProducts = products.filter(p => 
+            (!filters.productGroupId || p.group_id === filters.productGroupId) &&
+            (!filters.productId || p.id === filters.productId)
+        );
 
+        const relevantShelves = shelves.filter(s =>
+            (!filters.warehouseId || s.warehouse_id === filters.warehouseId) &&
+            (!filters.shelfId || s.id === filters.shelfId)
+        );
+
+        if (filters.warehouseId && relevantShelves.length === 0 && shelves.some(s => s.warehouse_id === filters.warehouseId)) {
+             // A specific shelf was selected that doesn't exist or doesn't match the warehouse, so relevantShelves is empty.
+             // This is an implicit filter, so the report should be empty.
+             setDisplayedData([]);
+             return;
+        }
+
+        // 2. Create a complete list of all potential stock items within the scope.
+        // We iterate through products and shelves to include items with zero stock if requested.
+        const allPotentialItems: StockItem[] = [];
+        const stockItemsMap = new Map<string, StockItem>();
+        stockItems.forEach(si => stockItemsMap.set(`${si.product_id}-${si.shelf_id}`, si));
+
+        for (const product of relevantProducts) {
+            for (const shelf of relevantShelves) {
+                const key = `${product.id}-${shelf.id}`;
+                const existingItem = stockItemsMap.get(key);
+                
+                if (existingItem) {
+                    allPotentialItems.push(existingItem);
+                } else {
+                    // This item has 0 stock because it doesn't exist in stockItems.
+                    allPotentialItems.push({
+                        product_id: product.id,
+                        warehouse_id: shelf.warehouse_id,
+                        shelf_id: shelf.id,
+                        quantity: 0
+                    });
+                }
+            }
+        }
+        
+        // 3. Filter this complete list based on the `hideZeroStock` parameter.
+        const dataToDisplay = hideZeroStock
+            ? allPotentialItems.filter(item => item.quantity > 0)
+            : allPotentialItems;
+
+        // 4. Map to the display format.
         const mapper = (item: StockItem) => {
             const product = findById(products, item.product_id);
             const warehouse = findById(warehouses, item.warehouse_id);
             const shelf = findById(shelves, item.shelf_id);
-            return { "Depo": warehouse?.name, "Raf": shelf?.name, "Ürün Adı": product?.name, "SKU": product?.sku, "Miktar": `${Number(item.quantity).toLocaleString()} ${getUnitAbbr(item.product_id)}` };
+            return {
+                "Depo": warehouse?.name,
+                "Raf": shelf?.name,
+                "Ürün Adı": product?.name,
+                "SKU": product?.sku,
+                "Miktar": `${Number(item.quantity).toLocaleString()} ${getUnitAbbr(item.product_id)}`
+            };
         };
 
-        setDisplayedData(data.map(mapper));
+        setDisplayedData(dataToDisplay.map(mapper));
     };
 
     const handleExport = () => {
@@ -133,7 +177,19 @@ const CurrentStockReportPage: React.FC<{
                          <SearchableSelect options={availableProducts} value={filters.productId} onChange={(val) => handleFilterChange('productId', val)} placeholder="Ürün Seçin"/>
                     </div>
                 </div>
-                <div className="flex justify-end items-center mt-4 pt-4 border-t">
+                <div className="flex justify-between items-center mt-4 pt-4 border-t">
+                    <div className="flex items-center">
+                        <input
+                            type="checkbox"
+                            id="hideZeroStock"
+                            checked={hideZeroStock}
+                            onChange={(e) => setHideZeroStock(e.target.checked)}
+                            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <label htmlFor="hideZeroStock" className="ml-2 text-sm font-medium text-slate-700">
+                            Stoğu olmayanları gizle
+                        </label>
+                    </div>
                      <button onClick={handleListClick} className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-indigo-600 text-white hover:bg-indigo-700">
                         Listele
                     </button>
