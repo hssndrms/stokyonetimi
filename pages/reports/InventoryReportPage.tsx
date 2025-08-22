@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Product, StockMovement, Unit, ProductGroup } from '../../types';
+import { Product, StockMovement, Unit, ProductGroup, WarehouseGroup, Warehouse, Shelf } from '../../types';
 import { findById } from '../../utils/helpers';
 import { useToast } from '../../context/ToastContext';
 import { exportToCsv } from '../../utils/csvExporter';
@@ -12,23 +12,34 @@ const InventoryReportPage: React.FC<{
     products: Product[];
     units: Unit[];
     productGroups: ProductGroup[];
-}> = ({ movements, products, units, productGroups }) => {
+    warehouseGroups: WarehouseGroup[];
+    warehouses: Warehouse[];
+    shelves: Shelf[];
+}> = ({ movements, products, units, productGroups, warehouseGroups, warehouses, shelves }) => {
     
     type Filters = {
         productId: string;
         productGroupId: string;
         inventoryDate: string;
+        warehouseGroupId: string;
+        warehouseId: string;
+        shelfId: string;
     };
     
     const initialFilters: Filters = {
         productId: '',
         productGroupId: '',
         inventoryDate: new Date().toISOString().slice(0, 10),
+        warehouseGroupId: '',
+        warehouseId: '',
+        shelfId: '',
     };
 
     const [filters, setFilters] = useState(initialFilters);
     const [displayedData, setDisplayedData] = useState<any[]>([]);
     const [availableProducts, setAvailableProducts] = useState<Product[]>(products);
+    const [availableWarehouses, setAvailableWarehouses] = useState<Warehouse[]>(warehouses);
+    const [availableShelves, setAvailableShelves] = useState<Shelf[]>([]);
     const [exportFormat, setExportFormat] = useState<'excel' | 'csv'>('excel');
     const { addToast } = useToast();
 
@@ -45,6 +56,33 @@ const InventoryReportPage: React.FC<{
             setAvailableProducts(products);
         }
     }, [filters.productGroupId, products, filters.productId]);
+
+    useEffect(() => {
+        if (filters.warehouseGroupId) {
+            const filtered = warehouses.filter(w => w.group_id === filters.warehouseGroupId);
+            setAvailableWarehouses(filtered);
+            if (filters.warehouseId && !filtered.some(w => w.id === filters.warehouseId)) {
+                setFilters(f => ({ ...f, warehouseId: '', shelfId: '' }));
+            }
+        } else {
+            setAvailableWarehouses(warehouses);
+        }
+    }, [filters.warehouseGroupId, warehouses]);
+
+    useEffect(() => {
+        if (filters.warehouseId) {
+            setAvailableShelves(shelves.filter(s => s.warehouse_id === filters.warehouseId));
+            if (filters.shelfId && !shelves.some(s => s.id === filters.shelfId && s.warehouse_id === filters.warehouseId)) {
+                setFilters(f => ({ ...f, shelfId: '' }));
+            }
+        } else {
+            setAvailableShelves([]);
+            if (filters.shelfId) {
+                setFilters(f => ({ ...f, shelfId: '' }));
+            }
+        }
+    }, [filters.warehouseId, shelves]);
+
 
     const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -63,31 +101,60 @@ const InventoryReportPage: React.FC<{
 
         const targetDate = new Date(filters.inventoryDate);
         targetDate.setHours(23, 59, 59, 999);
-
-        const inventoryMap = new Map<string, number>();
+        
+        const inventoryMapPerLocation = new Map<string, number>(); // key: `${pid}|${wid}|${sid}`
         movements
             .filter(m => new Date(m.date) <= targetDate)
             .forEach(movement => {
-                const currentQty = inventoryMap.get(movement.product_id) || 0;
+                const key = `${movement.product_id}|${movement.warehouse_id}|${movement.shelf_id || 'null'}`;
+                const currentQty = inventoryMapPerLocation.get(key) || 0;
                 const change = movement.type === 'IN' ? movement.quantity : -movement.quantity;
-                inventoryMap.set(movement.product_id, currentQty + change);
+                inventoryMapPerLocation.set(key, currentQty + change);
             });
+            
+        let inventoryList = Array.from(inventoryMapPerLocation.entries())
+            .map(([key, quantity]) => {
+                const [productId, warehouseId, shelfIdStr] = key.split('|');
+                return {
+                    productId,
+                    warehouseId,
+                    shelfId: shelfIdStr === 'null' ? null : shelfIdStr,
+                    quantity,
+                };
+            })
+            .filter(item => item.quantity !== 0);
 
-        let filteredProducts = products;
+        if (filters.warehouseGroupId) {
+            const warehousesInGroup = warehouses.filter(w => w.group_id === filters.warehouseGroupId).map(w => w.id);
+            inventoryList = inventoryList.filter(item => warehousesInGroup.includes(item.warehouseId));
+        }
+        if (filters.warehouseId) {
+            inventoryList = inventoryList.filter(item => item.warehouseId === filters.warehouseId);
+        }
+        if (filters.shelfId) {
+            inventoryList = inventoryList.filter(item => item.shelfId === filters.shelfId);
+        }
         if (filters.productGroupId) {
-            filteredProducts = filteredProducts.filter(p => p.group_id === filters.productGroupId);
+            const productsInGroup = products.filter(p => p.group_id === filters.productGroupId).map(p => p.id);
+            inventoryList = inventoryList.filter(item => productsInGroup.includes(item.productId));
         }
         if (filters.productId) {
-            filteredProducts = filteredProducts.filter(p => p.id === filters.productId);
+            inventoryList = inventoryList.filter(item => item.productId === filters.productId);
         }
-        
-        const data = filteredProducts
-            .map(product => ({
-                product,
-                quantity: inventoryMap.get(product.id) || 0,
+
+        const finalInventoryMap = new Map<string, number>(); // key: productId
+        inventoryList.forEach(item => {
+            const currentQty = finalInventoryMap.get(item.productId) || 0;
+            finalInventoryMap.set(item.productId, currentQty + item.quantity);
+        });
+
+        const data = Array.from(finalInventoryMap.entries())
+            .map(([productId, quantity]) => ({
+                product: findById(products, productId)!,
+                quantity,
             }))
-            .filter(item => item.quantity !== 0);
-        
+            .filter(item => item.quantity !== 0 && item.product);
+
         const mapper = (item: { product: Product, quantity: number }) => {
             return {
                 "Ürün Adı": item.product.name,
@@ -125,6 +192,18 @@ const InventoryReportPage: React.FC<{
                      <div>
                         <label htmlFor="inventoryDate" className={formLabelClass}>Tarih</label>
                         <input type="date" name="inventoryDate" id="inventoryDate" value={filters.inventoryDate} onChange={handleDateChange} className={formInputSmallClass} />
+                    </div>
+                     <div>
+                        <label className={formLabelClass}>Depo Grubu</label>
+                         <SearchableSelect options={warehouseGroups} value={filters.warehouseGroupId} onChange={(val) => handleFilterChange('warehouseGroupId', val)} placeholder="Grup Seçin"/>
+                    </div>
+                     <div>
+                        <label className={formLabelClass}>Depo</label>
+                         <SearchableSelect options={availableWarehouses} value={filters.warehouseId} onChange={(val) => handleFilterChange('warehouseId', val)} placeholder="Depo Seçin"/>
+                    </div>
+                     <div>
+                        <label className={formLabelClass}>Raf</label>
+                         <SearchableSelect options={availableShelves} value={filters.shelfId} onChange={(val) => handleFilterChange('shelfId', val)} placeholder="Raf Seçin" disabled={!filters.warehouseId} />
                     </div>
                     <div>
                         <label className={formLabelClass}>Ürün Grubu</label>

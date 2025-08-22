@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo } from 'react';
 import { Page, ModalState, MenuItem } from './types';
 import { ToastProvider } from './context/ToastContext';
@@ -154,7 +155,7 @@ const App: React.FC = () => {
             case 'reports-stock':
                 return <CurrentStockReportPage {...{stockItems, products, warehouses, shelves, units, productGroups}} />;
             case 'reports-inventory':
-                return <InventoryReportPage {...{movements: stockMovements, products, units, productGroups}} />;
+                return <InventoryReportPage {...{movements: stockMovements, products, units, productGroups, warehouses, warehouseGroups, shelves}} />;
             case 'settings-menu': return <SettingsMenuPage currentStructure={menuStructure} onSave={setMenuStructure} favoriteOrder={favoriteOrder} onFavoriteOrderChange={setFavoriteOrder} />;
             case 'settings-general': return <GeneralSettingsPage settings={generalSettings} onSave={setGeneralSettings} onOpenSetup={() => setForceShowSetup(true)} />;
             default: return <div>Sayfa Bulunamadı</div>;
