@@ -2,9 +2,12 @@
 
 Bu rehber, uygulamanın canlı ortama nasıl dağıtılacağını ve uygulama versiyonlarının nasıl yönetileceğini açıklar.
 
-## 1. Dağıtım (Deployment) Stratejisi
+## 1. Dallanma ve Dağıtım Stratejisi
 
-Uygulamamız, `npm run build` komutuyla statik dosyalara (HTML, CSS, JS) derlenen bir React uygulamasıdır. Bu, dağıtım için bize çok esnek ve modern seçenekler sunar.
+Projemiz, `main` dalının sürekli geliştirme için kullanıldığı ve `release` dalının kararlı, canlıya alınacak sürümleri barındırdığı bir iş akışı benimser.
+
+-   **`main` Dalı:** Geliştiricilerin yeni özellikleri eklediği, hataları düzelttiği ve günlük olarak çalıştığı ana geliştirme dalıdır. Bu dala yapılan her `push` işlemi, canlı ortamı etkilemez.
+-   **`release` Dalı:** Sadece test edilmiş, kararlı ve yayınlanmaya hazır kodları içerir. Bu dala bir kod birleştirildiğinde veya gönderildiğinde, otomatik dağıtım (deployment) süreci tetiklenir ve uygulama canlıya alınır.
 
 **Önerilen Yöntem: GitHub Actions ile GitHub Pages'e Otomatik Dağıtım**
 
@@ -13,7 +16,7 @@ Bu yöntem, tüm kod ve dağıtım sürecini GitHub ekosisteminde tutmanızı sa
 ### Neden Bu Yöntem?
 - **Maliyetsiz ve Ölçeklenebilir:** GitHub'ın ücretsiz planı çoğu proje için yeterlidir.
 - **Hızlı ve Güvenli:** Dosyalarınız küresel bir CDN (Content Delivery Network) üzerinden sunulur, bu da hızlı yükleme süreleri sağlar. SSL (HTTPS) otomatik olarak yapılandırılır.
-- **Otomatikleştirilmiş:** GitHub reponuzun `main` branch'ine her kod gönderdiğinizde (push), siteniz otomatik olarak derlenir ve canlıya alınır. Manuel yükleme zahmetini ortadan kaldırır.
+- **Otomatikleştirilmiş:** GitHub reponuzun `release` dalına her kod gönderdiğinizde, siteniz otomatik olarak derlenir ve canlıya alınır. Manuel yükleme zahmetini ortadan kaldırır.
 
 ### Kurulum Adımları
 
@@ -31,7 +34,7 @@ Bu yöntem, tüm kod ve dağıtım sürecini GitHub ekosisteminde tutmanızı sa
     on:
       push:
         branches:
-          - main # Sadece main branch'ine push yapıldığında çalışır
+          - release # Sadece release branch'ine push yapıldığında çalışır
 
     permissions:
       contents: read
@@ -69,80 +72,57 @@ Bu yöntem, tüm kod ve dağıtım sürecini GitHub ekosisteminde tutmanızı sa
             id: deployment
             uses: actions/deploy-pages@v2
     ```
-    - Bu dosyayı reponuza ekleyip `main` branch'ine push yaptığınızda, GitHub Actions otomatik olarak projenizi derleyecek ve `kullanici-adiniz.github.io/repo-adiniz` adresinde yayınlayacaktır.
+    - Bu dosyayı reponuza ekleyip `main` dalına push yaptığınızda henüz bir şey olmaz. Dağıtım, sadece `release` dalına bir kod gönderildiğinde başlayacaktır.
 
-## 2. Uygulama Versiyon Takibi
+## 2. Versiyonlama ve Sürüm Yayınlama İş Akışı
 
-Veritabanı versiyonlamasına ek olarak, uygulama kodunun versiyonunu da takip etmek önemlidir. Bunun için endüstri standardı olan **Semantic Versioning (Anlamsal Sürümleme)** kullanılır.
+Yeni bir sürüm yayınlamak için aşağıdaki adımları izleyin. Bu süreç, versiyon numarasını güncellemeyi, değişiklikleri `release` dalına aktarmayı ve dağıtımı tetiklemeyi içerir.
 
 ### Kural: `MAJOR.MINOR.PATCH` (Örnek: `1.2.0`)
 - **MAJOR (1):** Geriye dönük uyumluluğu bozan büyük değişiklikler yaptığınızda artırılır.
 - **MINOR (2):** Geriye dönük uyumlu yeni özellikler eklediğinizde artırılır.
 - **PATCH (0):** Geriye dönük uyumlu hata düzeltmeleri yaptığınızda artırılır.
 
-### Versiyon Yönetimi
+### Versiyon Yayınlama Adımları
 
-1.  **Tek Kaynak: `package.json`**
-    Uygulamanızın versiyonu için tek bir doğruluk kaynağı olmalıdır: `package.json` dosyasındaki `version` alanı.
-
-    ```json
-    // package.json
-    {
-      "name": "stok-takip-uygulamasi",
-      "version": "1.0.0", // Versiyon bilgisi burada tutulur
-      // ...
-    }
-    ```
-
-2.  **Versiyonu `npm` ile Yükseltme**
-    Versiyonu manuel olarak değiştirmek yerine `npm`'in kendi komutunu kullanmak en iyi pratiktir. Bu komut hem `package.json` dosyasını günceller hem de bu versiyon için bir Git etiketi (`git tag`) oluşturur.
-
-    -   Bir hata düzeltmesi yaptınız (Patch güncellemesi):
-        ```bash
-        npm version patch
-        ```
-        (Sonuç: `1.0.0` -> `1.0.1`)
-
-    -   Yeni bir özellik eklediniz (Minor güncellemesi):
-        ```bash
-        npm version minor
-        ```
-        (Sonuç: `1.0.1` -> `1.1.0`)
-
-    -   Büyük, uyumsuz bir değişiklik yaptınız (Major güncellemesi):
-        ```bash
-        npm version major
-        ```
-        (Sonuç: `1.1.0` -> `2.0.0`)
-
-    Bu komutu çalıştırdıktan sonra değişiklikleri ve yeni etiketi Git reponuza aşağıdaki komutla gönderin:
+1.  **`main` Dalını Güncel Tutun:**
+    Yeni sürüm için hazırlıklara başlamadan önce, `main` dalınızdaki tüm son değişikliklerin reponuza gönderildiğinden emin olun.
     ```bash
-    git push --follow-tags
+    git checkout main
+    git pull origin main
     ```
 
-3.  **Versiyonu Arayüzde Gösterme**
-    Kullanıcıların veya sizin, uygulamanın hangi versiyonunu kullandığını görmesi çok faydalıdır. Bunu genellikle Ayarlar sayfasının bir köşesinde veya bir "Hakkında" penceresinde gösteririz.
+2.  **`release` Dalına Geçin ve `main`'den Değişiklikleri Alın:**
+    Yerel makinenizde `release` dalına geçin ve `main` dalındaki en son kararlı kodları bu dala birleştirin (`merge`).
+    ```bash
+    git checkout release
+    git pull origin release
+    git merge main
+    ```
+    *(Eğer birleştirme sırasında çakışma (conflict) olursa, bunları çözüp devam etmeniz gerekir.)*
 
-    Bunu yapmak için `package.json`'daki versiyonu uygulamaya almamız gerekir. En basit yolu, versiyonu tutan ayrı bir dosya oluşturmaktır.
+3.  **Versiyon Numarasını Yükseltin:**
+    `release` dalındayken, `npm version` komutunu kullanarak projenin versiyonunu yükseltin. Bu komut, `package.json` dosyasını güncelleyecek ve bu versiyon için bir Git etiketi (`git tag`) oluşturacaktır.
 
-    -   **Adım 1:** `src/version.ts` adında bir dosya oluşturun:
-        ```typescript
-        export const APP_VERSION = '1.0.0';
-        ```
-    -   **Adım 2:** `package.json`'daki versiyonu `npm version` ile güncellediğinizde, bu dosyayı da güncellemeyi bir alışkanlık haline getirin.
-    -   **Adım 3:** İstediğiniz bir bileşende bu versiyonu gösterin. Örneğin `pages/SuppliersPage.tsx` (Genel Ayarlar sayfası) içinde:
-        ```tsx
-        import { APP_VERSION } from '../../version'; // Dosya yolunu ayarlayın
+    -   Bir hata düzeltmesi için (Patch): `npm version patch`
+    -   Yeni bir özellik için (Minor): `npm version minor`
+    -   Büyük bir değişiklik için (Major): `npm version major`
 
-        const GeneralSettingsPage = () => {
-          // ...
-          return (
-            <div>
-              {/* ...diğer ayarlar... */}
-              <div className="text-center mt-8 text-sm text-slate-500">
-                Uygulama Versiyonu: {APP_VERSION}
-              </div>
-            </div>
-          );
-        };
-        ```
+    Örnek (yeni bir özellik eklediniz):
+    ```bash
+    npm version minor
+    ```
+
+4.  **`release` Dalını ve Etiketleri Sunucuya Gönderin:**
+    Son olarak, güncellenmiş `release` dalını ve oluşturulan yeni versiyon etiketini GitHub'a gönderin. `--follow-tags` bayrağı, yeni oluşturulan etiketi de göndermenizi sağlar.
+    ```bash
+    git push origin release --follow-tags
+    ```
+
+5.  **Dağıtımı Kontrol Edin:**
+    Bu `push` işlemi, `deploy.yml` dosyasındaki kuralı tetikleyecek ve GitHub Actions, uygulamanızı otomatik olarak derleyip canlıya alacaktır. GitHub reponuzun "Actions" sekmesinden dağıtım sürecinin ilerlemesini takip edebilirsiniz. İşlem tamamlandığında, siteniz güncellenmiş olacaktır.
+```
+</content>
+  </change>
+</changes>
+```
