@@ -12,16 +12,60 @@ const StockOverviewPage: React.FC<{
 }> = ({ products, stockItems, warehouses, shelves, units }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' }>({ key: 'productName', direction: 'ascending' });
+
+    const requestSort = (key: string) => {
+        let direction: 'ascending' | 'descending' = 'ascending';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
 
     const groupedStock = useMemo(() => {
+        type ProductEntry = { product: Product; quantity: number };
+        
+        const sortProducts = (arr: ProductEntry[]): ProductEntry[] => {
+            if (!sortConfig) return arr;
+
+            return [...arr].sort((a, b) => {
+                let aValue: string | number, bValue: string | number;
+
+                switch (sortConfig.key) {
+                    case 'productName':
+                        aValue = a.product.name.toLowerCase();
+                        bValue = b.product.name.toLowerCase();
+                        break;
+                    case 'sku':
+                        aValue = a.product.sku.toLowerCase();
+                        bValue = b.product.sku.toLowerCase();
+                        break;
+                    case 'quantity':
+                        aValue = a.quantity;
+                        bValue = b.quantity;
+                        break;
+                    default:
+                        return 0;
+                }
+                
+                if (aValue < bValue) {
+                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                }
+                if (aValue > bValue) {
+                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                }
+                return 0;
+            });
+        };
+
         const warehouseMap: Record<string, {
             warehouse: Warehouse;
             totalQuantity: number;
-            shelflessProducts: { product: Product; quantity: number }[];
+            shelflessProducts: ProductEntry[];
             shelves: Record<string, {
                 shelf: Shelf;
                 totalQuantity: number;
-                products: { product: Product; quantity: number }[];
+                products: ProductEntry[];
             }>;
         }> = {};
 
@@ -76,14 +120,29 @@ const StockOverviewPage: React.FC<{
                 warehouseMap[warehouse.id].shelflessProducts.push({ product, quantity: item.quantity });
             }
         }
+
+        // Now sort the products within each group
+        for (const warehouseId in warehouseMap) {
+            warehouseMap[warehouseId].shelflessProducts = sortProducts(warehouseMap[warehouseId].shelflessProducts);
+            for (const shelfId in warehouseMap[warehouseId].shelves) {
+                warehouseMap[warehouseId].shelves[shelfId].products = sortProducts(warehouseMap[warehouseId].shelves[shelfId].products);
+            }
+        }
+
         return Object.values(warehouseMap);
-    }, [stockItems, warehouses, shelves, products, searchTerm]);
+    }, [stockItems, warehouses, shelves, products, searchTerm, sortConfig]);
 
     const toggleExpand = (id: string) => {
         setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
     const getUnitAbbr = (unitId: string) => findById(units, unitId)?.abbreviation || '';
+
+    const headers = [
+        { key: 'productName', label: 'Konum / Ürün Adı', align: 'left', width: 'w-2/5' },
+        { key: 'sku', label: 'SKU', align: 'left', width: 'w-1/5' },
+        { key: 'quantity', label: 'Miktar', align: 'right', width: 'w-1/5' },
+    ];
 
     return (
         <div>
@@ -104,9 +163,14 @@ const StockOverviewPage: React.FC<{
                     <table className="w-full text-left">
                         <thead className="border-b bg-slate-50">
                             <tr>
-                                <th className="p-4 text-sm font-semibold text-slate-600 uppercase tracking-wider w-2/5">Konum / Ürün Adı</th>
-                                <th className="p-4 text-sm font-semibold text-slate-600 uppercase tracking-wider w-1/5">SKU</th>
-                                <th className="p-4 text-sm font-semibold text-slate-600 uppercase tracking-wider w-1/5 text-right">Miktar</th>
+                                {headers.map(header => (
+                                     <th key={header.key} className={`p-4 text-sm font-semibold text-slate-600 uppercase tracking-wider ${header.width} text-${header.align}`}>
+                                        <button onClick={() => requestSort(header.key)} className={`w-full text-${header.align} flex items-center ${header.align === 'right' ? 'justify-end' : ''} gap-1 hover:text-slate-800`}>
+                                            {header.label}
+                                            {sortConfig?.key === header.key ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : null}
+                                        </button>
+                                    </th>
+                                ))}
                             </tr>
                         </thead>
                         <tbody>

@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Product, StockMovement, ModalState, StockItem, ProductGroup } from '../types';
 import { findById } from '../utils/helpers';
 import { ArrowRightToBracketIcon, ArrowRightFromBracketIcon, CubeIcon, UserPlusIcon, DollyIcon } from '../components/icons';
@@ -11,7 +11,38 @@ const DashboardPage: React.FC<{
     productGroups: ProductGroup[];
     setModal: (modal: ModalState) => void;
 }> = ({ products, stockItems, movements, productGroups, setModal }) => {
-    const recentMovements = useMemo(() => movements.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 20), [movements]);
+    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' }>({ key: 'date', direction: 'descending' });
+
+    const getProductName = (productId: string) => findById(products, productId)?.name || 'Bilinmeyen Ürün';
+
+    const sortedRecentMovements = useMemo(() => {
+        let items = [...movements]
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .slice(0, 20)
+            .map(m => ({ ...m, productName: getProductName(m.product_id) })); 
+
+        if (sortConfig.key) {
+            items.sort((a, b) => {
+                const key = sortConfig.key as keyof typeof a;
+                let aValue: any = a[key];
+                let bValue: any = b[key];
+
+                if (key === 'date') {
+                    aValue = new Date(a.date).getTime();
+                    bValue = new Date(b.date).getTime();
+                }
+
+                if (aValue < bValue) {
+                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                }
+                if (aValue > bValue) {
+                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+        return items;
+    }, [movements, products, sortConfig]);
 
     const productCountsByGroup = useMemo(() => {
         const counts: Record<string, number> = {};
@@ -28,7 +59,22 @@ const DashboardPage: React.FC<{
             .sort((a, b) => a.name.localeCompare(b.name));
     }, [products, productGroups]);
 
-    const getProductName = (productId: string) => findById(products, productId)?.name || 'Bilinmeyen Ürün';
+    const requestSort = (key: string) => {
+        let direction: 'ascending' | 'descending' = 'ascending';
+        if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const headers = [
+        { key: 'date', label: 'Tarih' },
+        { key: 'voucher_number', label: 'Fiş No' },
+        { key: 'productName', label: 'Ürün' },
+        { key: 'type', label: 'İşlem' },
+        { key: 'quantity', label: 'Miktar' },
+    ];
+
 
     return (
         <div>
@@ -73,19 +119,22 @@ const DashboardPage: React.FC<{
                     <table className="w-full text-left">
                         <thead>
                             <tr className="border-b bg-slate-50">
-                                <th className="p-4 text-sm font-semibold text-slate-600 uppercase tracking-wider">Tarih</th>
-                                <th className="p-4 text-sm font-semibold text-slate-600 uppercase tracking-wider">Fiş No</th>
-                                <th className="p-4 text-sm font-semibold text-slate-600 uppercase tracking-wider">Ürün</th>
-                                <th className="p-4 text-sm font-semibold text-slate-600 uppercase tracking-wider">İşlem</th>
-                                <th className="p-4 text-sm font-semibold text-slate-600 uppercase tracking-wider">Miktar</th>
+                                {headers.map(header => (
+                                    <th key={header.key} className="p-4 text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                        <button onClick={() => requestSort(header.key)} className="w-full text-left flex items-center gap-1 hover:text-slate-800">
+                                            {header.label}
+                                            {sortConfig.key === header.key ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : null}
+                                        </button>
+                                    </th>
+                                ))}
                             </tr>
                         </thead>
                         <tbody>
-                            {recentMovements.map(m => (
+                            {sortedRecentMovements.map(m => (
                                 <tr key={m.id} className="border-b">
                                     <td className="p-4 align-middle text-slate-700">{new Date(m.date).toLocaleDateString()}</td>
                                     <td className="p-4 align-middle text-slate-700 font-mono">{m.voucher_number}</td>
-                                    <td className="p-4 align-middle text-slate-700">{getProductName(m.product_id)}</td>
+                                    <td className="p-4 align-middle text-slate-700">{m.productName}</td>
                                     <td className="p-4 align-middle text-slate-700">
                                         <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${m.type === 'IN' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                             {m.type === 'IN' ? 'GİRİŞ' : 'ÇIKIŞ'}

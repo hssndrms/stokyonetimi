@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { PlusIcon, PencilIcon, TrashIcon } from './icons';
 
 const EntityManagementPage: React.FC<{
@@ -11,6 +11,32 @@ const EntityManagementPage: React.FC<{
     onDeleteItem: (id: string) => void;
     addLabel: string;
 }> = ({ title, items, columns, onAddItem, onEditItem, onDeleteItem, addLabel }) => {
+    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' } | null>(null);
+
+    const sortedItems = useMemo(() => {
+        let sortableItems = [...items];
+        if (sortConfig !== null) {
+            sortableItems.sort((a, b) => {
+                if (a[sortConfig.key] < b[sortConfig.key]) {
+                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                }
+                if (a[sortConfig.key] > b[sortConfig.key]) {
+                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+        return sortableItems;
+    }, [items, sortConfig]);
+
+    const requestSort = (key: string) => {
+        let direction: 'ascending' | 'descending' = 'ascending';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
+
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
@@ -24,12 +50,19 @@ const EntityManagementPage: React.FC<{
                     <table className="w-full text-left">
                         <thead>
                             <tr className="border-b bg-slate-50">
-                                {columns.map(col => <th key={col.key} className="p-4 text-sm font-semibold text-slate-600 uppercase tracking-wider">{col.header}</th>)}
+                                {columns.map(col => (
+                                    <th key={col.key} className="p-4 text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                        <button onClick={() => requestSort(col.key)} className="w-full text-left flex items-center gap-1 hover:text-slate-800">
+                                            {col.header}
+                                            {sortConfig?.key === col.key ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : null}
+                                        </button>
+                                    </th>
+                                ))}
                                 <th className="p-4 text-sm font-semibold text-slate-600 uppercase tracking-wider">İşlemler</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {items.map(item => (
+                            {sortedItems.map(item => (
                                 <tr key={item.id} className="border-b hover:bg-slate-50">
                                     {columns.map(col => <td key={col.key} className="p-4 align-middle text-slate-700">{item[col.key]}</td>)}
                                     <td className="p-4 align-middle text-slate-700">
