@@ -142,7 +142,7 @@ const App: React.FC = () => {
         const { handleDeleteWarehouse, handleDeleteShelf, handleDeleteProduct, handleDeleteProductGroup, handleDeleteWarehouseGroup, handleDeleteUnit, handleDeleteAccount, setGeneralSettings } = inventoryData;
 
         switch (page) {
-            case 'dashboard': return <DashboardPage products={products} stockItems={stockItems} movements={stockMovements} setModal={setModal} />;
+            case 'dashboard': return <DashboardPage products={products} stockItems={stockItems} movements={stockMovements} productGroups={productGroups} setModal={setModal} />;
             case 'stock': return <StockOverviewPage products={products} stockItems={stockItems} warehouses={warehouses} shelves={shelves} units={units} />;
             case 'warehouses': return <WarehousesPage warehouses={warehouses} shelves={shelves} stockItems={stockItems} warehouseGroups={warehouseGroups} setModal={setModal} handleDeleteWarehouse={handleDeleteWarehouse} handleDeleteShelf={handleDeleteShelf} />;
             case 'warehouse-groups': return <WarehouseGroupsPage warehouseGroups={warehouseGroups} setModal={setModal} handleDeleteWarehouseGroup={handleDeleteWarehouseGroup} />;

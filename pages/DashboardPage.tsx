@@ -1,5 +1,6 @@
+
 import React, { useMemo } from 'react';
-import { Product, StockMovement, ModalState, StockItem } from '../types';
+import { Product, StockMovement, ModalState, StockItem, ProductGroup } from '../types';
 import { findById } from '../utils/helpers';
 import { ArrowRightToBracketIcon, ArrowRightFromBracketIcon, CubeIcon, UserPlusIcon, DollyIcon } from '../components/icons';
 
@@ -7,9 +8,25 @@ const DashboardPage: React.FC<{
     products: Product[];
     stockItems: StockItem[];
     movements: StockMovement[];
+    productGroups: ProductGroup[];
     setModal: (modal: ModalState) => void;
-}> = ({ products, stockItems, movements, setModal }) => {
+}> = ({ products, stockItems, movements, productGroups, setModal }) => {
     const recentMovements = useMemo(() => movements.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 20), [movements]);
+
+    const productCountsByGroup = useMemo(() => {
+        const counts: Record<string, number> = {};
+        for (const product of products) {
+            counts[product.group_id] = (counts[product.group_id] || 0) + 1;
+        }
+
+        return productGroups
+            .map(group => ({
+                id: group.id,
+                name: group.name,
+                count: counts[group.id] || 0
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }, [products, productGroups]);
 
     const getProductName = (productId: string) => findById(products, productId)?.name || 'Bilinmeyen Ürün';
 
@@ -17,10 +34,21 @@ const DashboardPage: React.FC<{
         <div>
             <h1 className="text-3xl font-bold text-slate-800 mb-6">Anasayfa</h1>
             <div className="mb-8">
-                 <div className="bg-white p-6 rounded-lg shadow border max-w-sm">
-                    <h3 className="text-sm font-medium text-slate-500">Toplam Ürün Çeşidi</h3>
-                    <p className="text-4xl font-bold text-slate-800 mt-2">{products.length}</p>
-                </div>
+                 {productGroups.length > 0 ? (
+                    <div className="flex flex-wrap gap-4">
+                        {productCountsByGroup.map(group => (
+                            <div key={group.id} className="bg-white p-6 rounded-lg shadow border flex-grow min-w-[200px] max-w-xs">
+                                <h3 className="text-sm font-medium text-slate-500 truncate" title={group.name}>{group.name}</h3>
+                                <p className="text-4xl font-bold text-slate-800 mt-2">{group.count}</p>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                     <div className="bg-white p-6 rounded-lg shadow border max-w-sm">
+                        <h3 className="text-sm font-medium text-slate-500">Toplam Ürün Çeşidi</h3>
+                        <p className="text-4xl font-bold text-slate-800 mt-2">{products.length}</p>
+                    </div>
+                )}
             </div>
             <div className="flex flex-wrap gap-4 mb-8">
                 <button onClick={() => setModal({ type: 'STOCK_IN' })} className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-green-600 text-white hover:bg-green-700">
