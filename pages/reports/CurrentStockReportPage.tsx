@@ -1,7 +1,8 @@
 
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Shelf, Product, Warehouse, StockItem, Unit, ProductGroup } from '../../types';
-import { findById } from '../../utils/helpers';
+import { findById, formatNumber } from '../../utils/helpers';
 import { useToast } from '../../context/ToastContext';
 import { exportToCsv } from '../../utils/csvExporter';
 import { exportToExcel } from '../../utils/excelExporter';
@@ -143,7 +144,7 @@ const CurrentStockReportPage: React.FC<{
                 "Raf": shelf?.name || '-', // Show '-' for shelfless items
                 "Ürün Adı": product?.name,
                 "SKU": product?.sku,
-                "Miktar": `${Number(item.quantity).toLocaleString()} ${getUnitAbbr(item.product_id)}`
+                "Miktar": `${formatNumber(item.quantity)} ${getUnitAbbr(item.product_id)}`
             };
         };
     

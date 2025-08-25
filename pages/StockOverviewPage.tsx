@@ -1,6 +1,7 @@
+
 import React, { useState, useMemo } from 'react';
 import { Product, StockItem, Warehouse, Shelf, Unit } from '../types';
-import { findById } from '../utils/helpers';
+import { findById, formatNumber } from '../utils/helpers';
 import { formInputClass } from '../styles/common';
 
 const StockOverviewPage: React.FC<{
@@ -185,7 +186,7 @@ const StockOverviewPage: React.FC<{
                                             {warehouse.name}
                                         </td>
                                         <td></td>
-                                        <td className="p-4 font-bold text-slate-800 text-right">{totalQuantity.toLocaleString()}</td>
+                                        <td className="p-4 font-bold text-slate-800 text-right">{formatNumber(totalQuantity)}</td>
                                     </tr>
                                     {expanded[`wh-${warehouse.id}`] && (
                                         <>
@@ -193,7 +194,7 @@ const StockOverviewPage: React.FC<{
                                                 <tr key={`sl-${product.id}`} className="border-b hover:bg-slate-50">
                                                     <td className="p-4 pl-12 text-slate-700">{product.name}</td>
                                                     <td className="p-4 text-slate-600 font-mono text-sm">{product.sku}</td>
-                                                    <td className="p-4 text-slate-800 font-medium text-right">{quantity.toLocaleString()} {getUnitAbbr(product.unit_id)}</td>
+                                                    <td className="p-4 text-slate-800 font-medium text-right">{formatNumber(quantity)} {getUnitAbbr(product.unit_id)}</td>
                                                 </tr>
                                             ))}
                                             {Object.values(shelves).map(({ shelf, totalQuantity: shelfTotal, products: shelfProducts }) => (
@@ -204,13 +205,13 @@ const StockOverviewPage: React.FC<{
                                                             {shelf.name}
                                                         </td>
                                                         <td></td>
-                                                        <td className="p-4 font-semibold text-slate-700 text-right">{shelfTotal.toLocaleString()}</td>
+                                                        <td className="p-4 font-semibold text-slate-700 text-right">{formatNumber(shelfTotal)}</td>
                                                     </tr>
                                                     {expanded[`sh-${shelf.id}`] && shelfProducts.map(({ product, quantity }) => (
                                                         <tr key={product.id} className="border-b hover:bg-slate-50">
                                                             <td className="p-4 pl-20 text-slate-700">{product.name}</td>
                                                             <td className="p-4 text-slate-600 font-mono text-sm">{product.sku}</td>
-                                                            <td className="p-4 text-slate-800 font-medium text-right">{quantity.toLocaleString()} {getUnitAbbr(product.unit_id)}</td>
+                                                            <td className="p-4 text-slate-800 font-medium text-right">{formatNumber(quantity)} {getUnitAbbr(product.unit_id)}</td>
                                                         </tr>
                                                     ))}
                                                 </React.Fragment>

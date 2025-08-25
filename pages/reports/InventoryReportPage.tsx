@@ -1,7 +1,8 @@
 
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Product, StockMovement, Unit, ProductGroup, WarehouseGroup, Warehouse, Shelf } from '../../types';
-import { findById } from '../../utils/helpers';
+import { findById, formatNumber } from '../../utils/helpers';
 import { useToast } from '../../context/ToastContext';
 import { exportToCsv } from '../../utils/csvExporter';
 import { exportToExcel } from '../../utils/excelExporter';
@@ -161,7 +162,7 @@ const InventoryReportPage: React.FC<{
             return {
                 "Ürün Adı": item.product.name,
                 "SKU": item.product.sku,
-                "Toplam Miktar": `${Number(item.quantity).toLocaleString()} ${getUnitAbbr(item.product.id)}`,
+                "Toplam Miktar": `${formatNumber(item.quantity)} ${getUnitAbbr(item.product.id)}`,
             };
         };
 

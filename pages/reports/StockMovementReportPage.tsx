@@ -1,6 +1,7 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Shelf, Product, Warehouse, StockMovement, Unit, Account, ProductGroup, ModalState, GeneralSettings } from '../../types';
-import { findById } from '../../utils/helpers';
+import { findById, formatNumber } from '../../utils/helpers';
 import { useToast } from '../../context/ToastContext';
 import { exportToCsv } from '../../utils/csvExporter';
 import { exportToExcel } from '../../utils/excelExporter';
@@ -170,7 +171,7 @@ const StockMovementReportPage: React.FC<{
                             "Fiş No": pair.out.voucher_number,
                             "İşlem Türü": "Transfer",
                             "Ürün Adı": product?.name,
-                            "Miktar": `${Number(pair.out.quantity).toLocaleString()} ${getUnitAbbr(pair.out.product_id)}`,
+                            "Miktar": `${formatNumber(pair.out.quantity)} ${getUnitAbbr(pair.out.product_id)}`,
                             "Çıkan Depo": outWarehouse?.name,
                             "Çıkan Raf": outShelf?.name,
                             "Giren Depo": inWarehouse?.name,
@@ -193,7 +194,7 @@ const StockMovementReportPage: React.FC<{
                         "Fiş No": m.voucher_number,
                         "İşlem Türü": m.type === 'IN' ? 'Giriş' : 'Çıkış',
                         "Ürün Adı": product?.name,
-                        "Miktar": `${Number(m.quantity).toLocaleString()} ${getUnitAbbr(m.product_id)}`,
+                        "Miktar": `${formatNumber(m.quantity)} ${getUnitAbbr(m.product_id)}`,
                         "Çıkan Depo": m.type === 'OUT' ? warehouse?.name : '-',
                         "Çıkan Raf": m.type === 'OUT' ? shelf?.name : '-',
                         "Giren Depo": m.type === 'IN' ? warehouse?.name : '-',
@@ -221,8 +222,15 @@ const StockMovementReportPage: React.FC<{
                 let valB: any = bValue;
 
                 if (sortConfig.key === 'Miktar') {
-                    valA = parseFloat(String(aValue).replace(/[^0-9.]/g, '')) || 0;
-                    valB = parseFloat(String(bValue).replace(/[^0-9.]/g, '')) || 0;
+                    const parseQuantity = (quantityString: string) => {
+                        if (!quantityString) return 0;
+                        const numberPart = String(quantityString).split(' ')[0];
+                        // "1.234,56" -> "1234.56" for parseFloat
+                        const cleanedNumber = numberPart.replace(/\./g, '').replace(',', '.');
+                        return parseFloat(cleanedNumber) || 0;
+                    }
+                    valA = parseQuantity(aValue);
+                    valB = parseQuantity(bValue);
                 } else if (sortConfig.key === 'Tarih' || sortConfig.key === 'Kayıt Zamanı' || sortConfig.key === 'Güncelleme Zamanı') {
                      const parseDateTime = (dateTimeStr: string) => {
                          if (!dateTimeStr || dateTimeStr === '-') return 0;

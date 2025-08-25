@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Shelf, StockItem, Unit, ModalState } from '../../types';
 import { useToast } from '../../context/ToastContext';
@@ -5,6 +6,7 @@ import { PlusIcon, TrashIcon } from '../icons';
 import SearchableSelect from '../SearchableSelect';
 import { formLabelClass, formInputSmallClass } from '../../styles/common';
 import { ModalComponentProps } from './ModalComponentProps';
+import { formatNumber } from '../../utils/helpers';
 
 type Line = { id: number, productGroupId: string, productId: string, quantity: string };
 type Header = { date: string, sourceWarehouseId: string, sourceShelfId: string, destWarehouseId: string, destShelfId: string, notes: string };
@@ -160,7 +162,7 @@ const StockTransferFormModal: React.FC<StockTransferFormModalProps> = ({ isEdit,
         );
         const product = products.find(p => p.id === productId);
         const unit = units.find(u => u.id === product?.unit_id);
-        return `${Number(stockItem?.quantity || 0).toLocaleString()} ${unit?.abbreviation || ''}`;
+        return `${formatNumber(stockItem?.quantity || 0)} ${unit?.abbreviation || ''}`;
     };
 
     const handleSubmit = async (e: React.FormEvent) => {

@@ -1,7 +1,8 @@
 
+
 import React, { useMemo, useState } from 'react';
 import { Product, StockMovement, ModalState, StockItem, ProductGroup } from '../types';
-import { findById } from '../utils/helpers';
+import { findById, formatNumber } from '../utils/helpers';
 import { ArrowRightToBracketIcon, ArrowRightFromBracketIcon, CubeIcon, UserPlusIcon, DollyIcon } from '../components/icons';
 
 const DashboardPage: React.FC<{
@@ -85,7 +86,7 @@ const DashboardPage: React.FC<{
                         {productCountsByGroup.map(group => (
                             <div key={group.id} className="bg-white p-6 rounded-lg shadow border flex-grow min-w-[200px] max-w-xs">
                                 <h3 className="text-sm font-medium text-slate-500 truncate" title={group.name}>{group.name}</h3>
-                                <p className="text-4xl font-bold text-slate-800 mt-2">{group.count}</p>
+                                <p className="text-4xl font-bold text-slate-800 mt-2">{formatNumber(group.count)}</p>
                             </div>
                         ))}
                     </div>
@@ -140,7 +141,7 @@ const DashboardPage: React.FC<{
                                             {m.type === 'IN' ? 'GİRİŞ' : 'ÇIKIŞ'}
                                         </span>
                                     </td>
-                                    <td className="p-4 align-middle text-slate-700 font-medium">{m.quantity}</td>
+                                    <td className="p-4 align-middle text-slate-700 font-medium">{formatNumber(m.quantity)}</td>
                                 </tr>
                             ))}
                         </tbody>
