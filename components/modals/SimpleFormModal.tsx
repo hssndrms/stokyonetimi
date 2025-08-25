@@ -4,12 +4,15 @@ import { useToast } from '../../context/ToastContext';
 import { formInputClass, formLabelClass } from '../../styles/common';
 import { ModalComponentProps } from './ModalComponentProps';
 
-interface SimpleFormModalProps extends ModalComponentProps {
+interface SimpleFormModalProps extends ModalComponentProps<{
+    onSuccess?: (newId: string) => void;
+    [key: string]: any;
+}> {
     fields: { name: string; label: string; value: string, required?: boolean }[];
-    onSubmit: (data: Record<string, string>) => any;
+    onSubmit: (data: Record<string, string>) => Promise<any>;
 }
 
-const SimpleFormModal: React.FC<SimpleFormModalProps> = ({ fields, onSubmit, onClose }) => {
+const SimpleFormModal: React.FC<SimpleFormModalProps> = ({ fields, onSubmit, onClose, data }) => {
     const { addToast } = useToast();
     const [formData, setFormData] = useState<Record<string, string>>(() => fields.reduce((acc, f) => ({ ...acc, [f.name]: f.value }), {}));
     const [errors, setErrors] = useState<Record<string, boolean>>({});
@@ -21,7 +24,7 @@ const SimpleFormModal: React.FC<SimpleFormModalProps> = ({ fields, onSubmit, onC
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const newErrors: Record<string, boolean> = {};
         let hasError = false;
@@ -38,11 +41,20 @@ const SimpleFormModal: React.FC<SimpleFormModalProps> = ({ fields, onSubmit, onC
             return;
         }
 
-        const result = onSubmit(formData);
-        
+        const result = await onSubmit(formData);
+    
+        // Priority 1: Handle the onSuccess callback if a new ID is returned
+        if (data?.onSuccess && typeof result === 'string' && result) {
+            data.onSuccess(result);
+            return; // The callback handles the next step
+        }
+
+        // Priority 2: Handle standard modal closing on success
         if (result === undefined || result === true || (typeof result === 'string' && result !== '')) {
             onClose();
         }
+        
+        // If result is `false` or `''`, it's a failure, and we do nothing, keeping the modal open.
     };
     
     return (

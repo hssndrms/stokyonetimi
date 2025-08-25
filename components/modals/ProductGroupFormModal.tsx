@@ -8,7 +8,7 @@ interface ProductGroupFormModalProps extends ModalComponentProps<ProductGroup & 
     isEdit: boolean;
 }
 
-const ProductGroupFormModal: React.FC<ProductGroupFormModalProps> = ({ isEdit, data, onClose, handleAddProductGroup, handleEditProductGroup }) => {
+const ProductGroupFormModal: React.FC<ProductGroupFormModalProps> = ({ isEdit, data, onClose, handleAddProductGroup, handleEditProductGroup, productGroups }) => {
     const { addToast } = useToast();
     const [formData, setFormData] = useState({
         name: data?.name || '',
@@ -40,10 +40,20 @@ const ProductGroupFormModal: React.FC<ProductGroupFormModalProps> = ({ isEdit, d
         e.preventDefault();
         const newErrors: { name?: string; sku_prefix?: string; sku_length?: string } = {};
         if (!formData.name.trim()) newErrors.name = 'Zorunlu alan';
-        if (!formData.sku_prefix.trim()) {
+
+        const trimmedPrefix = formData.sku_prefix.trim();
+        if (!trimmedPrefix) {
             newErrors.sku_prefix = 'Zorunlu alan';
-        } else if (formData.sku_prefix.trim().length > 5) {
+        } else if (trimmedPrefix.length > 5) {
             newErrors.sku_prefix = 'En fazla 5 karakter olabilir';
+        } else {
+            const prefixInUse = productGroups.some(group => 
+                group.sku_prefix.toLowerCase() === trimmedPrefix.toLowerCase() &&
+                (!isEdit || group.id !== data!.id)
+            );
+            if (prefixInUse) {
+                newErrors.sku_prefix = 'Bu önek zaten kullanılıyor.';
+            }
         }
         
         if (!formData.sku_length || formData.sku_length < 3 || formData.sku_length > 10) {
@@ -58,17 +68,14 @@ const ProductGroupFormModal: React.FC<ProductGroupFormModalProps> = ({ isEdit, d
         }
 
         if (isEdit) {
-            const success = await handleEditProductGroup({...(data as ProductGroup), ...formData });
+            const success = await handleEditProductGroup({...(data as ProductGroup), ...formData, sku_prefix: trimmedPrefix });
             if (success) onClose();
         } else {
-            const newGroupId = await handleAddProductGroup(formData);
+            const newGroupId = await handleAddProductGroup({...formData, sku_prefix: trimmedPrefix});
             if (newGroupId) {
-                // If there's a success callback, call it and DO NOT call onClose.
-                // The callback is now responsible for navigation.
                 if (data?.onSuccess) {
                     data.onSuccess(newGroupId);
                 } else {
-                    // Default behavior if no callback is provided
                     onClose();
                 }
             }
