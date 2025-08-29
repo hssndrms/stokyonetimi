@@ -1,6 +1,7 @@
 
 
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Page, ModalState, MenuItem } from './types';
 import { ToastProvider } from './context/ToastContext';
 import { useInventory } from './hooks/useInventory';
@@ -23,6 +24,34 @@ import CurrentStockReportPage from './pages/reports/CurrentStockReportPage';
 import InventoryReportPage from './pages/reports/InventoryReportPage';
 import SetupPage from './pages/SetupPage';
 
+declare var gsap: any;
+
+const StaggeredEntry: React.FC<{ children: React.ReactNode; staggerKey: any; }> = ({ children, staggerKey }) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!containerRef.current || typeof gsap === 'undefined') return;
+        
+        const elements = Array.from(containerRef.current.children);
+        if (elements.length === 0) return;
+
+        gsap.killTweensOf(elements);
+
+        gsap.set(elements, { autoAlpha: 0, y: -20 });
+
+        gsap.to(elements, {
+            autoAlpha: 1,
+            y: 0,
+            duration: 0.4,
+            stagger: 0.08,
+            ease: 'bounce.out'
+        });
+
+    }, [staggerKey]);
+
+    return <div ref={containerRef} className="flex items-center gap-1">{children}</div>;
+};
+
 const TopHeader: React.FC = () => {
     return (
         <header className="bg-slate-800 text-white h-16 flex-shrink-0 flex items-center px-6 z-20 shadow-md">
@@ -39,6 +68,7 @@ const ContentHeader: React.FC<{
     onFavoriteClick: (id: string) => void;
 }> = ({ toggleSidebar, isSidebarOpen, favorites, onFavoriteClick }) => {
     const tooltip = isSidebarOpen ? 'Menüyü gizle' : 'Menüyü göster';
+    const favoritesKey = favorites.map(f => f.id).join('-');
     return (
         <header className="bg-white shadow-sm h-16 flex-shrink-0 flex items-center px-4 z-10">
             <button
@@ -49,18 +79,20 @@ const ContentHeader: React.FC<{
             >
                 <i className={`fa-solid ${isSidebarOpen ? 'fa-ellipsis-vertical' : 'fa-ellipsis'} fa-lg`}></i>
             </button>
-            <div className="flex items-center gap-1 ml-4">
-                {favorites.map(fav => (
-                    <button
-                        key={fav.id}
-                        onClick={() => onFavoriteClick(fav.id)}
-                        className="p-3 rounded-md text-slate-600 hover:bg-slate-200 hover:text-indigo-600 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        aria-label={fav.label}
-                        title={fav.label}
-                    >
-                        {fav.icon}
-                    </button>
-                ))}
+            <div className="flex items-center ml-4">
+                 <StaggeredEntry staggerKey={favoritesKey}>
+                    {favorites.map(fav => (
+                        <button
+                            key={fav.id}
+                            onClick={() => onFavoriteClick(fav.id)}
+                            className="p-3 rounded-md text-slate-600 hover:bg-slate-200 hover:text-indigo-600 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            aria-label={fav.label}
+                            title={fav.label}
+                        >
+                            {fav.icon}
+                        </button>
+                    ))}
+                </StaggeredEntry>
             </div>
         </header>
     );
