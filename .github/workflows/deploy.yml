@@ -20,7 +20,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18' # Projenize uygun Node.js versiyonu
+          node-version: '18'
           cache: 'npm'
 
       - name: Install dependencies 📦
@@ -35,7 +35,7 @@ jobs:
       - name: Upload artifact 🚀
         uses: actions/upload-pages-artifact@v2
         with:
-          path: './dist' # Derlenmiş dosyaların olduğu klasör
+          path: './dist'
 
       - name: Deploy to GitHub Pages 🚀
         id: deployment
