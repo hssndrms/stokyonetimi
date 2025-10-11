@@ -100,7 +100,7 @@ Artık uygulamayı yerel bilgisayarınızda kullanabilirsiniz. Terminali kapatma
 ---
 ## 📦 Derleme ve Dağıtım (Build & Deployment)
 
-Uygulamanızı tamamladığınızda, kullanıcılarınızın erişebilmesi için canlıya almanız gerekir.
+Uygulamanızı tamamladığınızda, kullanıcılarınızın erişebilmesi için canlı ortama almanız gerekir. Bu süreç iki ana adımdan oluşur: derleme (`build`) ve dağıtım (`deployment`).
 
 ### 1. Derleme Adımı
 
@@ -114,56 +114,9 @@ Oluşturulan `dist` klasörünün içeriği artık bir web sunucusunda barındı
 
 ### 2. Dağıtım Yöntemleri
 
-#### Yöntem 1: Statik Hosting Servisleri (Netlify, Vercel vb.)
+#### Yöntem 1: Manuel Dağıtım (Windows Sunucusu - IIS)
 
-En kolay ve hızlı yöntemdir. [Netlify](https://www.netlify.com/), [Vercel](https://vercel.com/), [GitHub Pages](https://pages.github.com/) gibi modern hosting servisleri, `dist` klasörünü sürükleyip bırakarak veya bir Git reposuna bağlayarak projenizi saniyeler içinde SSL sertifikası dahil olmak üzere yayınlamanıza olanak tanır.
-
-#### Yöntem 2: Node.js ile Yerel Sunucu Başlatma (Hızlı Test)
-
-Bu, derlenmiş uygulamanızı canlı ortama taşımadan önce test etmenin en hızlı ve en yaygın yollarından biridir. Adımlar Windows ve macOS için aynıdır.
-
-1.  **Serve Paketini Yükleyin:**
-    Eğer bilgisayarınızda `serve` paketi yüklü değilse, Terminal veya Komut İstemi'nde aşağıdaki komutla global olarak yükleyin:
-    ```bash
-    npm install -g serve
-    ```
-
-2.  **Sunucuyu Başlatın:**
-    Projenizin ana dizininde (`dist` klasörünün bulunduğu yerde), aşağıdaki komutu çalıştırın:
-    ```bash
-    serve -s dist
-    ```
-    -   `-s`: Bu bayrak, projenin tek sayfa uygulaması (Single Page Application - SPA) olduğunu belirtir. Bu sayede, `site.com/urunler` gibi alt sayfalara doğrudan gidildiğinde sayfanın düzgün yüklenmesini sağlar.
-    -   `dist`: Sunucunun hangi klasördeki dosyaları sunacağını belirtir.
-
-3.  **Uygulamayı Açın:**
-    Terminalde size verilen adresi (genellikle `http://localhost:3000`) tarayıcınızda açarak uygulamanızı görüntüleyebilirsiniz.
-
-#### Yöntem 3: Yerel HTTPS Test Sunucusu
-
-Uygulamanızı canlıya almadan önce güvenli bir ortamda (HTTPS) test etmek için bu yöntemi kullanabilirsiniz. Bu adımlar hem **Windows** hem de **macOS** için geçerlidir.
-
-1.  **Serve Paketini Yükleyin:**
-    Eğer bilgisayarınızda `serve` paketi yüklü değilse, Terminal veya Komut İstemi'nde aşağıdaki komutla global olarak yükleyin:
-    ```bash
-    npm install -g serve
-    ```
-
-2.  **Sunucuyu Başlatın:**
-    Projenizin ana dizininde, aşağıdaki komutu çalıştırarak `dist` klasörünü HTTPS üzerinden sunun:
-    ```bash
-    serve -s -S dist -l 5000
-    ```
-    -   `-s`: Tek sayfa uygulamaları (SPA) için tüm istekleri `index.html`'e yönlendirir.
-    -   `-S`: SSL (HTTPS) modunu aktif eder ve otomatik olarak geçici bir sertifika oluşturur.
-    -   `-l 5000`: Sunucunun `5000` portunda çalışmasını sağlar.
-
-3.  **Tarayıcıda Açın:**
-    Tarayıcınızda `https://localhost:5000` adresine gidin. Tarayıcı, sertifikanın "kendinden imzalı" (self-signed) olması nedeniyle bir güvenlik uyarısı gösterecektir. Bu normaldir. "Gelişmiş" veya "Yine de devam et" seçeneğine tıklayarak siteyi görüntüleyebilirsiniz.
-
-#### Yöntem 4: Windows Sunucusu (IIS)
-
-Uygulamayı bir Windows sunucusunda IIS (Internet Information Services) üzerinden yayınlamak için aşağıdaki adımları izleyin.
+Bu yöntem, `dist` klasöründeki dosyaları manuel olarak sunucuya kopyalamayı içerir. Her güncellemede bu adımların tekrarlanması gerekir.
 
 **Ön Gereksinimler:**
 -   Sunucuda IIS rolünün kurulu olması.
@@ -171,23 +124,20 @@ Uygulamayı bir Windows sunucusunda IIS (Internet Information Services) üzerind
 
 **Adımlar:**
 
-1.  **Projenizi Derleyin:**
-    Yerel makinenizde `npm run build` komutunu çalıştırarak `dist` klasörünü oluşturun.
+1.  **Dosyaları Sunucuya Kopyalayın:**
+    `npm run build` ile oluşturulan `dist` klasörünün **içindeki tüm dosyaları**, sunucunuzda siteyi barındırmak istediğiniz bir klasöre kopyalayın (örn: `C:\inetpub\wwwroot\stok-uygulamasi`).
 
-2.  **Dosyaları Sunucuya Kopyalayın:**
-    `dist` klasörünün **içindeki tüm dosyaları** (klasörün kendisini değil) sunucunuzda siteyi barındırmak istediğiniz bir klasöre kopyalayın (örn: `C:\inetpub\wwwroot\stok-uygulamasi`).
-
-3.  **IIS'te Yeni Bir Site Oluşturun:**
+2.  **IIS'te Yeni Bir Site Oluşturun:**
     -   IIS Yöneticisi'ni açın.
-    -   Sol taraftaki "Connections" panelinde sunucu adınızı genişletin, "Sites" üzerine sağ tıklayın ve "Add Website..." seçeneğini seçin.
-    -   **Site name:** Uygulamanıza bir isim verin (örn: `Stok Takip`).
-    -   **Physical path:** Dosyaları kopyaladığınız klasörün yolunu seçin (örn: `C:\inetpub\wwwroot\stok-uygulamasi`).
-    -   **Binding:** Sitenin çalışacağı portu ve isteğe bağlı olarak bir hostname belirleyin.
+    -   "Sites" üzerine sağ tıklayın ve "Add Website..." seçeneğini seçin.
+    -   **Site name:** Uygulamanıza bir isim verin.
+    -   **Physical path:** Dosyaları kopyaladığınız klasörün yolunu seçin.
+    -   **Binding:** Sitenin çalışacağı portu belirleyin.
 
-4.  **`web.config` Dosyasını Oluşturun:**
-    React gibi tek sayfa uygulamaları, sayfa yönlendirmelerini tarayıcı tarafında yönetir. Kullanıcı `site.com/urunler` gibi bir adrese doğrudan gittiğinde, sunucunun bu isteği alıp ana `index.html` dosyasına yönlendirmesi gerekir. IIS'te bu işlemi `web.config` dosyası ve URL Rewrite modülü yapar.
+3.  **`web.config` Dosyasını Oluşturun:**
+    React gibi tek sayfa uygulamaları, sayfa yönlendirmelerini tarayıcı tarafında yönetir. Kullanıcı `site.com/urunler` gibi bir adrese doğrudan gittiğinde, sunucunun bu isteği alıp ana `index.html` dosyasına yönlendirmesi gerekir.
 
-    -   Dosyaları kopyaladığınız klasörün (`C:\inetpub\wwwroot\stok-uygulamasi`) içine `web.config` adında yeni bir dosya oluşturun.
+    -   Dosyaları kopyaladığınız klasörün içine `web.config` adında yeni bir dosya oluşturun.
     -   Dosyayı bir metin düzenleyici ile açın ve aşağıdaki içeriği içine yapıştırın:
 
     ```xml
@@ -210,8 +160,83 @@ Uygulamayı bir Windows sunucusunda IIS (Internet Information Services) üzerind
     </configuration>
     ```
 
-5.  **Siteyi Ziyaret Edin:**
-    Tarayıcınızdan sitenin adresine giderek uygulamanızın çalıştığını doğrulayın. Artık hem ana sayfaya hem de alt sayfalara (örn: `/urunler`) doğrudan erişebiliyor olmalısınız.
+4.  **Siteyi Ziyaret Edin:**
+    Tarayıcınızdan sitenin adresine giderek uygulamanızın çalıştığını doğrulayın.
+
+#### Yöntem 2: Otomatik Dağıtım (CI/CD ile Windows Sunucusu - IIS) - ÖNERİLEN
+
+Bu yöntem, güncellemelerin otomatik olarak ve hatasız bir şekilde sunucuya aktarılmasını sağlar. Kurulumu bir kez yapılır ve sonrasında güncelleme süreci tamamen otomatikleşir.
+
+Bu otomasyon, **GitHub Actions** ve sunucunuza kuracağınız **Self-Hosted Runner** (Kendi Sunucunda Çalışan Koşucu) adı verilen bir program aracılığıyla çalışır. Runner, GitHub'daki projenizi dinler ve `release` dalına yeni bir kod gönderildiğinde, uygulamayı otomatik olarak derleyip sunucunuzdaki doğru klasöre kopyalar.
+
+**Kurulum Adımları:**
+
+Bu kurulum, **sadece bir kez** son kullanıcının sunucusunda veya sistem yöneticisi tarafından yapılır.
+
+**Adım 1: GitHub'da Runner Token'ı Oluşturma**
+
+1.  Uygulamanın GitHub deposuna gidin.
+2.  `Settings` -> `Actions` -> `Runners` sekmelerine tıklayın.
+3.  Sağ üstteki **`New self-hosted runner`** butonuna tıklayın.
+4.  İşletim sistemi olarak **`Windows`** seçeneğini seçin. Mimarinin `x64` olduğundan emin olun.
+5.  Sayfada, sunucunuzda çalıştırmanız gereken bir dizi komut (`Download` ve `Configure` başlıkları altında) görünecektir. **Bu sayfayı kapatmayın**, bir sonraki adımda bu komutlara ihtiyacınız olacak.
+
+**Adım 2: Sunucuda Runner'ı Kurma ve Yapılandırma**
+
+Aşağıdaki adımları uygulamanın barındırılacağı Windows sunucusunda gerçekleştirin.
+
+1.  **PowerShell'i Yönetici Olarak Açın:**
+    Başlat menüsüne `PowerShell` yazın, **Windows PowerShell**'e sağ tıklayın ve **"Yönetici olarak çalıştır"** seçeneğini seçin.
+
+2.  **Runner İçin Klasör Oluşturun:**
+    Runner dosyalarını saklamak için bir klasör oluşturun. Örneğin:
+    ```powershell
+    mkdir C:\actions-runner
+    cd C:\actions-runner
+    ```
+
+3.  **Runner'ı İndirin ve Yapılandırın:**
+    Bir önceki adımda açık bıraktığınız GitHub sayfasındaki komutları sırayla PowerShell'e yapıştırıp çalıştırın. Bu komutlar şuna benzer olacaktır:
+
+    ```powershell
+    # Download bölümündeki ilk komut (versiyon farklı olabilir)
+    Invoke-WebRequest -Uri https://github.com/actions/runner/releases/download/v2.311.0/actions-runner-win-x64-2.311.0.zip -OutFile actions-runner-win-x64-2.311.0.zip
+    
+    # Download bölümündeki ikinci komut
+    Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory("$PWD/actions-runner-win-x64-2.311.0.zip", "$PWD")
+
+    # Configure bölümündeki komut
+    ./config.cmd --url https://github.com/KULLANICI_ADINIZ/REPO_ADINIZ --token TOKEN_BILGINIZ
+    ```
+    -   `config.cmd` komutunu çalıştırdığınızda, size birkaç soru sorulacaktır:
+        -   **Enter the name of the runner group:** `Enter` tuşuna basarak varsayılanı (`default`) kabul edebilirsiniz.
+        -   **Enter the name of runner:** `Enter` tuşuna basarak sunucu adını (`server-name`) kabul edebilirsiniz.
+        -   **Enter additional labels:** `Enter` tuşuna basarak boş bırakabilirsiniz.
+        -   **Enter name of work folder:** `Enter` tuşuna basarak varsayılanı (`_work`) kabul edebilirsiniz.
+
+4.  **Runner'ı Servis Olarak Kurun:**
+    Yapılandırma tamamlandıktan sonra, runner'ın sunucu yeniden başladığında bile otomatik olarak çalışması için onu bir Windows servisi olarak kurun:
+    ```powershell
+    ./svc.ps1 install
+    ./svc.ps1 start
+    ```
+    -   Bu komutlardan sonra GitHub'daki runner sayfasını yenilediğinizde, yeni koşucunuzun `Idle` (Boşta) durumunda göründüğünü göreceksiniz.
+
+**Adım 3: Gerekli Klasör İzinlerini Ayarlama (ÇOK ÖNEMLİ!)**
+
+Runner'ın IIS klasörüne dosya yazabilmesi için, çalıştığı kullanıcıya ilgili klasör üzerinde yazma izni vermeniz gerekir.
+
+1.  Uygulama dosyalarının bulunduğu klasöre gidin (örn: `C:\inetpub\wwwroot\stok-uygulamasi`).
+2.  Klasöre sağ tıklayın ve `Properties` (Özellikler) seçeneğini seçin.
+3.  `Security` (Güvenlik) sekmesine gidin ve `Edit...` butonuna tıklayın.
+4.  `Add...` (Ekle) butonuna tıklayın.
+5.  Açılan pencereye `NT AUTHORITY\NETWORK SERVICE` yazın ve `Check Names` butonuna tıklayın. Adın altı çizili hale gelmesi gerekir. `OK`'a tıklayın.
+6.  `NETWORK SERVICE` kullanıcısını seçtikten sonra, alttaki izinler kutusunda `Modify` (Değiştir) izni için `Allow` (İzin Ver) kutucuğunu işaretleyin. Bu, `Read` ve `Write` izinlerini de otomatik olarak seçecektir.
+7.  `Apply` ve `OK` butonlarına basarak tüm pencereleri kapatın.
+
+**Kurulum Tamamlandı!**
+
+Artık CI/CD sisteminiz hazır. Geliştirici, projede `release` dalına yeni bir kod gönderdiği anda, sunucunuzdaki bu runner görevi otomatik olarak alacak, uygulamayı derleyecek ve dosyaları IIS klasörünüze kopyalayacaktır. Güncelleme işlemi için artık manuel bir işlem yapmanıza gerek kalmamıştır.
 
 ---
 
