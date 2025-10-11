@@ -20,65 +20,129 @@ Bu yöntem, uygulamanın bir Windows sunucusundaki IIS ortamına otomatik olarak
 
 ### Kurulum Adımları
 
-1.  **Sunucuya Self-Hosted Runner Kurulumu:**
-    Bu sürecin en kritik adımı, dağıtımın yapılacağı Windows sunucusuna bir "Self-Hosted Runner" kurmaktır. Bu, GitHub'dan gelen komutları dinleyen ve sunucunuzda çalıştıran küçük bir programdır.
-    
-    Detaylı kurulum adımları için projenin ana dizinindeki `README.md` dosyasının **"Otomatik Dağıtım (CI/CD ile Windows Sunucusu - IIS)"** bölümünü takip edin.
+Bu kurulum, **sadece bir kez** son kullanıcının sunucusunda veya sistem yöneticisi tarafından yapılır.
 
-2.  **GitHub Actions Workflow'u Oluşturma:**
-    - Projenizin ana dizininde `.github/workflows` adında bir klasör oluşturun.
-    - İçine `deploy.yml` adında bir dosya ekleyin ve aşağıdaki içeriği yapıştırın. Bu dosya, otomasyon sürecinin adımlarını tanımlar.
+**Adım 1: GitHub'da Runner Token'ı Oluşturma**
 
-    ```yaml
-    name: Deploy to Windows IIS Server
+1.  Uygulamanın GitHub deposuna gidin.
+2.  `Settings` -> `Actions` -> `Runners` sekmelerine tıklayın.
+3.  Sağ üstteki **`New self-hosted runner`** butonuna tıklayın.
+4.  İşletim sistemi olarak **`Windows`** seçeneğini seçin. Mimarinin `x64` olduğundan emin olun.
+5.  Sayfada, sunucunuzda çalıştırmanız gereken bir dizi komut (`Download` ve `Configure` başlıkları altında) görünecektir. **Bu sayfayı kapatmayın**, bir sonraki adımlarda bu komutlara ihtiyacınız olacak.
 
-    on:
-      push:
-        branches:
-          - release # Sadece 'release' dalına push yapıldığında çalışır
+**Adım 2: Runner'ı Sunucuya İndirme ve Kurma**
 
-    jobs:
-      build-and-deploy:
-        # Bu işin, sizin kurduğunuz sunucudaki runner'da çalışmasını sağlar
-        runs-on: self-hosted 
+Aşağıdaki adımları uygulamanın barındırılacağı Windows sunucusunda gerçekleştirin.
 
-        steps:
-          - name: Checkout 🛎️
-            # Kodu runner'ın çalıştığı makineye indirir
-            uses: actions/checkout@v4
+1.  **PowerShell'i Yönetici Olarak Açın:**
+    Başlat menüsüne `PowerShell` yazın, **Windows PowerShell**'e sağ tıklayın ve **"Yönetici olarak çalıştır"** seçeneğini seçin.
 
-          - name: Setup Node.js
-            # Projeyi derlemek için gerekli Node.js ortamını kurar
-            uses: actions/setup-node@v4
-            with:
-              node-version: '18' # Projenize uygun Node.js versiyonu
-              cache: 'npm'
-
-          - name: Install dependencies 📦
-            # Gerekli kütüphaneleri (paketleri) yükler
-            run: npm install
-
-          - name: Build 🔧
-            # Uygulamayı derleyip 'dist' klasörünü oluşturur
-            run: npm run build
-
-          - name: Deploy to IIS 🚀
-            # Derlenmiş dosyaları IIS klasörüne kopyalar
-            run: |
-              # DİKKAT: Bu yolu kendi sunucunuzdaki doğru IIS klasör yolu ile değiştirin!
-              $targetPath = "C:\inetpub\wwwroot\stok-uygulamasi"
-              
-              Write-Host "Hedef klasördeki eski dosyalar siliniyor: $targetPath"
-              if (Test-Path $targetPath) {
-                Get-ChildItem -Path $targetPath | Remove-Item -Recurse -Force
-              }
-              
-              Write-Host "'dist' klasöründeki yeni dosyalar kopyalanıyor..."
-              Copy-Item -Path ".\dist\*" -Destination $targetPath -Recurse -Force
-              
-              Write-Host "Dağıtım tamamlandı!"
-            shell: powershell
+2.  **Runner İçin Klasör Oluşturun:**
+    Runner dosyalarını saklamak için bir klasör oluşturun. Örneğin:
+    ```powershell
+    mkdir C:\actions-runner
+    cd C:\actions-runner
     ```
+
+3.  **Runner'ı İndirin:**
+    Bir önceki adımda açık bıraktığınız GitHub sayfasındaki **`Download`** başlığı altındaki komutları sırayla PowerShell'e yapıştırıp çalıştırın. Bu komutlar, runner yazılımını sunucunuza indirecek ve `.zip` dosyasından çıkaracaktır. Komutlar şuna benzer olacaktır:
+
+    ```powershell
+    # Örnek indirme komutu (GitHub sayfasındaki güncel versiyonu kopyalayın)
+    Invoke-WebRequest -Uri https://github.com/actions/runner/releases/download/v2.317.0/actions-runner-win-x64-2.317.0.zip -OutFile actions-runner-win-x64-2.317.0.zip
+    
+    # Zip'ten çıkarma komutu
+    Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory("$PWD/actions-runner-win-x64-2.317.0.zip", "$PWD")
+    ```
+    
+**Adım 3: Runner'ı Yapılandırma ve Servis Olarak Başlatma**
+
+1.  **Yapılandırma Komutunu Çalıştırın:**
+    İndirme işlemi bittikten sonra, yine GitHub sayfasındaki **`Configure`** başlığı altındaki komutu çalıştırın. Bu komut, runner'ı GitHub deponuza bağlayacaktır.
+    ```powershell
+    ./config.cmd --url https://github.com/KULLANICI_ADINIZ/REPO_ADINIZ --token TOKEN_BILGINIZ
+    ```
+    -   `config.cmd` komutunu çalıştırdığınızda, size birkaç soru sorulacaktır:
+        -   **Enter the name of the runner group:** `Enter` tuşuna basarak varsayılanı (`default`) kabul edebilirsiniz.
+        -   **Enter the name of runner:** `Enter` tuşuna basarak sunucu adını (`server-name`) kabul edebilirsiniz.
+        -   **Enter additional labels:** `Enter` tuşuna basarak boş bırakabilirsiniz.
+        -   **Enter name of work folder:** `Enter` tuşuna basarak varsayılanı (`_work`) kabul edebilirsiniz.
+
+2.  **Runner'ı Servis Olarak Kurun:**
+    Yapılandırma tamamlandıktan sonra, runner'ın sunucu yeniden başladığında bile otomatik olarak çalışması için onu bir Windows servisi olarak kurun:
+    ```powershell
+    ./svc.ps1 install
+    ./svc.ps1 start
+    ```
+    -   Bu komutlardan sonra GitHub'daki runner sayfasını yenilediğinizde, yeni koşucunuzun `Idle` (Boşta) durumunda göründüğünü göreceksiniz.
+
+**Adım 4: Gerekli Klasör İzinlerini Ayarlama (ÇOK ÖNEMLİ!)**
+
+Runner'ın IIS klasörüne dosya yazabilmesi için, çalıştığı kullanıcıya ilgili klasör üzerinde yazma izni vermeniz gerekir.
+
+1.  Uygulama dosyalarının bulunduğu klasöre gidin (örn: `C:\inetpub\wwwroot\stok-uygulamasi`).
+2.  Klasöre sağ tıklayın ve `Properties` (Özellikler) seçeneğini seçin.
+3.  `Security` (Güvenlik) sekmesine gidin ve `Edit...` butonuna tıklayın.
+4.  `Add...` (Ekle) butonuna tıklayın.
+5.  Açılan pencereye `NT AUTHORITY\NETWORK SERVICE` yazın ve `Check Names` butonuna tıklayın. Adın altı çizili hale gelmesi gerekir. `OK`'a tıklayın.
+6.  `NETWORK SERVICE` kullanıcısını seçtikten sonra, alttaki izinler kutusunda `Modify` (Değiştir) izni için `Allow` (İzin Ver) kutucuğunu işaretleyin. Bu, `Read` ve `Write` izinlerini de otomatik olarak seçecektir.
+7.  `Apply` ve `OK` butonlarına basarak tüm pencereleri kapatın.
+
+**Adım 5: GitHub Actions Workflow'u Oluşturma**
+
+- Projenizin ana dizininde `.github/workflows` adında bir klasör oluşturun.
+- İçine `deploy.yml` adında bir dosya ekleyin ve aşağıdaki içeriği yapıştırın. Bu dosya, otomasyon sürecinin adımlarını tanımlar.
+
+```yaml
+name: Deploy to Windows IIS Server
+
+on:
+  push:
+    branches:
+      - release # Sadece 'release' dalına push yapıldığında çalışır
+
+jobs:
+  build-and-deploy:
+    # Bu işin, sizin kurduğunuz sunucudaki runner'da çalışmasını sağlar
+    runs-on: self-hosted 
+
+    steps:
+      - name: Checkout 🛎️
+        # Kodu runner'ın çalıştığı makineye indirir
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        # Projeyi derlemek için gerekli Node.js ortamını kurar
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18' # Projenize uygun Node.js versiyonu
+          cache: 'npm'
+
+      - name: Install dependencies 📦
+        # Gerekli kütüphaneleri (paketleri) yükler
+        run: npm install
+
+      - name: Build 🔧
+        # Uygulamayı derleyip 'dist' klasörünü oluşturur
+        run: npm run build
+
+      - name: Deploy to IIS 🚀
+        # Derlenmiş dosyaları IIS klasörüne kopyalar
+        run: |
+          # DİKKAT: Bu yolu kendi sunucunuzdaki doğru IIS klasör yolu ile değiştirin!
+          $targetPath = "C:\inetpub\wwwroot\stok-uygulamasi"
+          
+          Write-Host "Hedef klasördeki eski dosyalar siliniyor: $targetPath"
+          if (Test-Path $targetPath) {
+            Get-ChildItem -Path $targetPath | Remove-Item -Recurse -Force
+          }
+          
+          Write-Host "'dist' klasöründeki yeni dosyalar kopyalanıyor..."
+          Copy-Item -Path ".\dist\*" -Destination $targetPath -Recurse -Force
+          
+          Write-Host "Dağıtım tamamlandı!"
+        shell: powershell
+```
 
 ### Workflow Dosyasının Açıklaması
 
