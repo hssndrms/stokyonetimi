@@ -9,72 +9,88 @@ Projemiz, `main` dalının sürekli geliştirme için kullanıldığı ve `relea
 -   **`main` Dalı:** Geliştiricilerin yeni özellikleri eklediği, hataları düzelttiği ve günlük olarak çalıştığı ana geliştirme dalıdır. Bu dala yapılan her `push` işlemi, canlı ortamı etkilemez.
 -   **`release` Dalı:** Sadece test edilmiş, kararlı ve yayınlanmaya hazır kodları içerir. Bu dala bir kod birleştirildiğinde veya gönderildiğinde, otomatik dağıtım (deployment) süreci tetiklenir ve uygulama canlıya alınır.
 
-**Önerilen Yöntem: GitHub Actions ile GitHub Pages'e Otomatik Dağıtım**
+## 2. Dağıtım Yöntemi: GitHub Actions ve Self-Hosted Runner ile Otomatik Dağıtım
 
-Bu yöntem, tüm kod ve dağıtım sürecini GitHub ekosisteminde tutmanızı sağlar, tamamen otomatiktir ve ücretsizdir.
+Bu yöntem, uygulamanın bir Windows sunucusundaki IIS ortamına otomatik olarak dağıtılmasını sağlar. Bu süreç, GitHub Actions tarafından yönetilir ve sunucuya kurulan bir "Self-Hosted Runner" aracılığıyla gerçekleştirilir.
 
 ### Neden Bu Yöntem?
-- **Maliyetsiz ve Ölçeklenebilir:** GitHub'ın ücretsiz planı çoğu proje için yeterlidir.
-- **Hızlı ve Güvenli:** Dosyalarınız küresel bir CDN (Content Delivery Network) üzerinden sunulur, bu da hızlı yükleme süreleri sağlar. SSL (HTTPS) otomatik olarak yapılandırılır.
-- **Otomatikleştirilmiş:** GitHub reponuzun `release` dalına her kod gönderdiğinizde, siteniz otomatik olarak derlenir ve canlıya alınır. Manuel yükleme zahmetini ortadan kaldırır.
+- **Tam Otomasyon:** `release` dalına her kod gönderildiğinde, siteniz otomatik olarak derlenir ve canlıya alınır. Manuel dosya kopyalama zahmetini ortadan kaldırır.
+- **Güvenli:** GitHub ve özel sunucunuz arasında güvenli bir köprü kurar. Sunucu şifrelerinizi veya hassas bilgilerinizi GitHub'a kaydetmeniz gerekmez.
+- **Hızlı ve Hatasız:** Manuel işlemlerde oluşabilecek insan hatalarını ortadan kaldırır ve dağıtım sürecini standartlaştırır.
 
 ### Kurulum Adımları
 
-1.  **Repo Ayarları:**
-    - GitHub reponuzun `Settings` -> `Pages` bölümüne gidin.
-    - `Source` olarak "GitHub Actions" seçeneğini belirleyin.
+1.  **Sunucuya Self-Hosted Runner Kurulumu:**
+    Bu sürecin en kritik adımı, dağıtımın yapılacağı Windows sunucusuna bir "Self-Hosted Runner" kurmaktır. Bu, GitHub'dan gelen komutları dinleyen ve sunucunuzda çalıştıran küçük bir programdır.
+    
+    Detaylı kurulum adımları için projenin ana dizinindeki `README.md` dosyasının **"Otomatik Dağıtım (CI/CD ile Windows Sunucusu - IIS)"** bölümünü takip edin.
 
 2.  **GitHub Actions Workflow'u Oluşturma:**
     - Projenizin ana dizininde `.github/workflows` adında bir klasör oluşturun.
-    - İçine `deploy.yml` adında bir dosya ekleyin ve aşağıdaki içeriği yapıştırın:
+    - İçine `deploy.yml` adında bir dosya ekleyin ve aşağıdaki içeriği yapıştırın. Bu dosya, otomasyon sürecinin adımlarını tanımlar.
 
     ```yaml
-    name: Deploy to GitHub Pages
+    name: Deploy to Windows IIS Server
 
     on:
       push:
         branches:
-          - release # Sadece release branch'ine push yapıldığında çalışır
-
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
+          - release # Sadece 'release' dalına push yapıldığında çalışır
 
     jobs:
       build-and-deploy:
-        runs-on: ubuntu-latest
+        # Bu işin, sizin kurduğunuz sunucudaki runner'da çalışmasını sağlar
+        runs-on: self-hosted 
+
         steps:
           - name: Checkout 🛎️
+            # Kodu runner'ın çalıştığı makineye indirir
             uses: actions/checkout@v4
 
           - name: Setup Node.js
+            # Projeyi derlemek için gerekli Node.js ortamını kurar
             uses: actions/setup-node@v4
             with:
               node-version: '18' # Projenize uygun Node.js versiyonu
               cache: 'npm'
 
           - name: Install dependencies 📦
+            # Gerekli kütüphaneleri (paketleri) yükler
             run: npm install
 
           - name: Build 🔧
+            # Uygulamayı derleyip 'dist' klasörünü oluşturur
             run: npm run build
 
-          - name: Setup Pages
-            uses: actions/configure-pages@v5
-
-          - name: Upload artifact 🚀
-            uses: actions/upload-pages-artifact@v3
-            with:
-              path: './dist' # Derlenmiş dosyaların olduğu klasör
-
-          - name: Deploy to GitHub Pages 🚀
-            id: deployment
-            uses: actions/deploy-pages@v4
+          - name: Deploy to IIS 🚀
+            # Derlenmiş dosyaları IIS klasörüne kopyalar
+            run: |
+              # DİKKAT: Bu yolu kendi sunucunuzdaki doğru IIS klasör yolu ile değiştirin!
+              $targetPath = "C:\inetpub\wwwroot\stok-uygulamasi"
+              
+              Write-Host "Hedef klasördeki eski dosyalar siliniyor: $targetPath"
+              if (Test-Path $targetPath) {
+                Get-ChildItem -Path $targetPath | Remove-Item -Recurse -Force
+              }
+              
+              Write-Host "'dist' klasöründeki yeni dosyalar kopyalanıyor..."
+              Copy-Item -Path ".\dist\*" -Destination $targetPath -Recurse -Force
+              
+              Write-Host "Dağıtım tamamlandı!"
+            shell: powershell
     ```
-    - Bu dosyayı reponuza ekleyip `main` dalına push yaptığınızda henüz bir şey olmaz. Dağıtım, sadece `release` dalına bir kod gönderildiğinde başlayacaktır.
 
-## 2. Versiyonlama ve Sürüm Yayınlama İş Akışı
+### Workflow Dosyasının Açıklaması
+
+-   **`on: push: branches: [release]`**: Bu otomasyonun sadece `release` dalına yeni bir kod gönderildiğinde tetikleneceğini belirtir.
+-   **`runs-on: self-hosted`**: En önemli kısımdır. Bu komut, işin GitHub'ın sanal makineleri yerine, sizin etiketlediğiniz ve sunucunuza kurduğunuz koşucuda çalışmasını sağlar.
+-   **`steps`**: İşin adımlarını tanımlar. Kodları indirme (`checkout`), Node.js ortamını kurma, bağımlılıkları yükleme (`npm install`), uygulamayı derleme (`npm run build`) ve son olarak dosyaları kopyalama adımlarından oluşur.
+-   **`Deploy to IIS` adımı**:
+    -   `shell: powershell` komutu, bu adımı Windows PowerShell ile çalıştırır.
+    -   `$targetPath` değişkenine, uygulamanızın IIS'te barındırıldığı klasörün tam yolunu yazmalısınız. **Bu yolu kendi sunucu yapılandırmanıza göre düzenlemeniz kritiktir.**
+    -   Betik önce hedef klasördeki tüm eski dosyaları siler, sonra `dist` klasörünün içindeki yeni dosyaları oraya kopyalar.
+
+## 3. Versiyonlama ve Sürüm Yayınlama İş Akışı
 
 Yeni bir sürüm yayınlamak için aşağıdaki adımları izleyin. Bu süreç, versiyon numarasını güncellemeyi, değişiklikleri `release` dalına aktarmayı ve dağıtımı tetiklemeyi içerir.
 
@@ -120,4 +136,4 @@ Yeni bir sürüm yayınlamak için aşağıdaki adımları izleyin. Bu süreç, 
     ```
 
 5.  **Dağıtımı Kontrol Edin:**
-    Bu `push` işlemi, `deploy.yml` dosyasındaki kuralı tetikleyecek ve GitHub Actions, uygulamanızı otomatik olarak derleyip canlıya alacaktır. GitHub reponuzun "Actions" sekmesinden dağıtım sürecinin ilerlemesini takip edebilirsiniz. İşlem tamamlandığında, siteniz güncellenmiş olacaktır.
+    Bu `push` işlemi, `deploy.yml` dosyasındaki kuralı tetikleyecek ve sunucunuzdaki Self-Hosted Runner, uygulamayı otomatik olarak derleyip IIS klasörünüze kopyalayacaktır. GitHub reponuzun "Actions" sekmesinden dağıtım sürecinin ilerlemesini takip edebilirsiniz. İşlem tamamlandığında, siteniz güncellenmiş olacaktır.
