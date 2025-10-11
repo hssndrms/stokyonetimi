@@ -122,13 +122,20 @@ export const useInventory = () => {
             
         } catch (err: any) {
             console.error("Data fetch error:", err);
-            let errorMessage = "Bilinmeyen bir hata oluştu. Lütfen konsolu kontrol edin.";
-            if (err instanceof Error) {
-                errorMessage = err.message;
-            } else if (err && typeof err === 'object' && 'message' in err) {
-                errorMessage = String(err.message);
-            } else if (typeof err === 'string') {
-                errorMessage = err;
+            let errorMessage = "Bilinmeyen bir hata oluştu.";
+            if (err) {
+                if (typeof err === 'object' && err !== null && 'message' in err && typeof (err as any).message === 'string') {
+                    errorMessage = (err as { message: string }).message;
+                } else if (typeof err === 'string') {
+                    errorMessage = err;
+                } else {
+                    try {
+                        const errString = JSON.stringify(err);
+                        errorMessage = errString === '{}' ? "Bilinmeyen bir nesne hatası." : errString;
+                    } catch {
+                        errorMessage = "Hata objesi string'e çevrilemedi.";
+                    }
+                }
             }
             
             setError(`Veri yüklenirken bir hata oluştu: ${errorMessage}`);
