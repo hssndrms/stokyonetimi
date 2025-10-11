@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Shelf, Product, Warehouse, StockMovement, Unit, Account, ProductGroup, ModalState, GeneralSettings } from '../../types';
 import { findById, formatNumber } from '../../utils/helpers';
@@ -86,6 +87,11 @@ const StockMovementReportPage: React.FC<{
     
     const handleFilterChange = (name: keyof Filters, value: string) => {
         setFilters(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleClearFilters = () => {
+        setFilters(initialFilters);
+        setDisplayedData([]);
     };
     
     const handleVoucherClick = (voucherNumber: string) => {
@@ -340,9 +346,16 @@ const StockMovementReportPage: React.FC<{
                         />
                     </div>
                 </div>
-                <div className="flex justify-end items-center mt-4 pt-4 border-t">
-                     <button onClick={handleListClick} className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-indigo-600 text-white hover:bg-indigo-700">
-                        Listele
+                <div className="flex justify-end items-center mt-4 pt-4 border-t gap-2">
+                     <button
+                        type="button"
+                        onClick={handleClearFilters}
+                        className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300"
+                    >
+                        <i className="fa-solid fa-eraser"></i> Filtreleri Temizle
+                    </button>
+                    <button onClick={handleListClick} className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-indigo-600 text-white hover:bg-indigo-700">
+                        <i className="fa-solid fa-list-ul"></i> Listele
                     </button>
                 </div>
             </div>
