@@ -46,10 +46,10 @@ Bu yöntem, tüm kod ve dağıtım sürecini GitHub ekosisteminde tutmanızı sa
         runs-on: ubuntu-latest
         steps:
           - name: Checkout 🛎️
-            uses: actions/checkout@v3
+            uses: actions/checkout@v4
 
           - name: Setup Node.js
-            uses: actions/setup-node@v3
+            uses: actions/setup-node@v4
             with:
               node-version: '18' # Projenize uygun Node.js versiyonu
               cache: 'npm'
@@ -61,16 +61,16 @@ Bu yöntem, tüm kod ve dağıtım sürecini GitHub ekosisteminde tutmanızı sa
             run: npm run build
 
           - name: Setup Pages
-            uses: actions/configure-pages@v3
+            uses: actions/configure-pages@v5
 
           - name: Upload artifact 🚀
-            uses: actions/upload-pages-artifact@v2
+            uses: actions/upload-pages-artifact@v3
             with:
               path: './dist' # Derlenmiş dosyaların olduğu klasör
 
           - name: Deploy to GitHub Pages 🚀
             id: deployment
-            uses: actions/deploy-pages@v2
+            uses: actions/deploy-pages@v4
     ```
     - Bu dosyayı reponuza ekleyip `main` dalına push yaptığınızda henüz bir şey olmaz. Dağıtım, sadece `release` dalına bir kod gönderildiğinde başlayacaktır.
 
@@ -121,8 +121,3 @@ Yeni bir sürüm yayınlamak için aşağıdaki adımları izleyin. Bu süreç, 
 
 5.  **Dağıtımı Kontrol Edin:**
     Bu `push` işlemi, `deploy.yml` dosyasındaki kuralı tetikleyecek ve GitHub Actions, uygulamanızı otomatik olarak derleyip canlıya alacaktır. GitHub reponuzun "Actions" sekmesinden dağıtım sürecinin ilerlemesini takip edebilirsiniz. İşlem tamamlandığında, siteniz güncellenmiş olacaktır.
-```
-</content>
-  </change>
-</changes>
-```
