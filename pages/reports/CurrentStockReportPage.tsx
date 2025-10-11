@@ -74,6 +74,11 @@ const CurrentStockReportPage: React.FC<{
         setFilters(prev => ({ ...prev, [name]: value }));
     };
 
+    const handleClearFilters = () => {
+        setFilters(initialFilters);
+        setDisplayedData([]);
+    };
+
     const handleListClick = () => {
         // 1. Filter products based on UI filters.
         const relevantProducts = products.filter(p => 
@@ -245,9 +250,18 @@ const CurrentStockReportPage: React.FC<{
                             Stoğu olmayanları gizle
                         </label>
                     </div>
-                     <button onClick={handleListClick} className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-indigo-600 text-white hover:bg-indigo-700">
-                        Listele
-                    </button>
+                     <div className="flex gap-2">
+                        <button
+                            type="button"
+                            onClick={handleClearFilters}
+                            className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300"
+                        >
+                            <i className="fa-solid fa-eraser"></i> Filtreleri Temizle
+                        </button>
+                        <button onClick={handleListClick} className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-indigo-600 text-white hover:bg-indigo-700">
+                            <i className="fa-solid fa-list-ul"></i> Listele
+                        </button>
+                    </div>
                 </div>
             </div>
 
