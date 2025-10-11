@@ -1,7 +1,8 @@
+
 import React from 'react';
 import { Warehouse, Shelf, StockItem, ModalState, WarehouseGroup } from '../types';
 import { PlusIcon, PencilIcon, TrashIcon } from '../components/icons';
-import { findById } from '../utils/helpers';
+import { findById, formatNumber } from '../utils/helpers';
 
 const WarehousesPage: React.FC<{
     warehouses: Warehouse[];
@@ -54,7 +55,7 @@ const WarehousesPage: React.FC<{
                                 <h2 className="text-xl font-bold text-slate-800">{warehouse.name} <span className="text-base font-normal text-slate-500">({warehouse.code})</span></h2>
                                 <div className="flex items-center gap-4 text-sm text-slate-600">
                                     <span>Grup: <strong>{getGroupName(warehouse.group_id)}</strong></span>
-                                    <span>Stok Adedi: <strong>{getStockCountForWarehouse(warehouse.id).toLocaleString()}</strong></span>
+                                    <span>Stok Adedi: <strong>{formatNumber(getStockCountForWarehouse(warehouse.id))}</strong></span>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -71,7 +72,7 @@ const WarehousesPage: React.FC<{
                                 <div key={shelf.id} className="bg-slate-50 p-3 rounded-md border text-center">
                                     <p className="font-semibold text-slate-700">{shelf.name}</p>
                                     <p className="text-xs text-slate-500">Kod: {shelf.code}</p>
-                                    <p className="text-xs text-slate-500">Stok: {getStockCountForShelf(shelf.id).toLocaleString()}</p>
+                                    <p className="text-xs text-slate-500">Stok: {formatNumber(getStockCountForShelf(shelf.id))}</p>
                                     <div className="mt-2 flex justify-center gap-3">
                                         <button onClick={() => setModal({ type: 'EDIT_SHELF', data: shelf })} className="text-blue-600 hover:text-blue-800 text-sm"><PencilIcon/></button>
                                         <button onClick={() => setModal({ type: 'CONFIRM_DELETE', data: { message: `"${shelf.name}" adlı rafı silmek istediğinizden emin misiniz?`, onConfirm: () => handleDeleteShelf(shelf.id) } })} className="text-red-600 hover:text-red-800 text-sm"><TrashIcon/></button>

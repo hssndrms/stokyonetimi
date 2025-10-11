@@ -202,7 +202,14 @@ export const useInventory = () => {
         const supabase = createSupabaseClient();
         if (!supabase) return null;
         const { data: newProduct, error } = await supabase.from('products').insert(product).select('id, group_id').single();
-        if (error) { addToast(`Ürün eklenemedi: ${error.message}`, 'error'); return null; }
+        if (error) {
+            if (error.message.includes('products_sku_key')) {
+                addToast('Bu SKU (Stok Kodu) ile başka bir ürün zaten mevcut. Lütfen farklı bir SKU kullanın.', 'error');
+            } else {
+                addToast(`Ürün eklenemedi: ${error.message}`, 'error');
+            }
+            return null;
+        }
         addToast('Ürün başarıyla eklendi.', 'success');
         fetchData();
         return newProduct;
@@ -211,7 +218,14 @@ export const useInventory = () => {
         const supabase = createSupabaseClient();
         if (!supabase) return false;
         const { error } = await supabase.from('products').update(product).eq('id', product.id);
-        if (error) { addToast(`Ürün güncellenemedi: ${error.message}`, 'error'); return false; }
+        if (error) {
+            if (error.message.includes('products_sku_key')) {
+                addToast('Bu SKU (Stok Kodu) ile başka bir ürün zaten mevcut. Lütfen farklı bir SKU kullanın.', 'error');
+            } else {
+                addToast(`Ürün güncellenemedi: ${error.message}`, 'error');
+            }
+            return false;
+        }
         addToast('Ürün başarıyla güncellendi.', 'success');
         fetchData();
         return true;

@@ -22,7 +22,7 @@ interface ProductFormModalProps extends ModalComponentProps<ProductFormData> {
     setModal: (modal: ModalState) => void;
 }
 
-const ProductFormModal: React.FC<ProductFormModalProps> = ({ isEdit, data, onClose, units, productGroups, handleAddUnit, handleAddProductGroup, handleAddProduct, handleEditProduct, generateSku, setModal }) => {
+const ProductFormModal: React.FC<ProductFormModalProps> = ({ isEdit, data, onClose, units, productGroups, handleAddProductGroup, handleAddProduct, handleEditProduct, generateSku, setModal }) => {
     const { addToast } = useToast();
     
     const [product, setProduct] = useState<RestoredState>(() => {
@@ -33,9 +33,6 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({ isEdit, data, onClo
     });
     
     const [errors, setErrors] = useState<{ name?: string; sku?: string; unit_id?: string; group_id?: string }>({});
-    const [isAddingUnit, setIsAddingUnit] = useState(false);
-    const [newUnitName, setNewUnitName] = useState('');
-    const [newUnitAbbr, setNewUnitAbbr] = useState('');
 
     const handleChange = (field: keyof typeof product, value: string) => {
         setProduct(p => ({ ...p, [field]: value }));
@@ -74,18 +71,22 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({ isEdit, data, onClo
         }
     };
 
-    const handleSaveNewUnit = async () => {
-        if (!newUnitName.trim() || !newUnitAbbr.trim()) {
-            addToast('Birim adı ve kısaltması boş olamaz.', 'error');
-            return;
-        }
-        const newUnitId = await handleAddUnit({ name: newUnitName, abbreviation: newUnitAbbr });
-        if (newUnitId) {
-            handleChange('unit_id', newUnitId);
-            setIsAddingUnit(false);
-            setNewUnitName('');
-            setNewUnitAbbr('');
-        }
+    const handleAddNewUnit = () => {
+        setModal({
+            type: 'ADD_UNIT',
+            data: {
+                onSuccess: (newUnitId: string) => {
+                    // Re-open this modal with its state preserved and the new unit selected.
+                    setModal({
+                        type: isEdit ? 'EDIT_PRODUCT' : 'ADD_PRODUCT',
+                        data: {
+                            ...data, // Pass original data (like product ID for edit mode) and onSuccess
+                            restoredState: { ...product, unit_id: newUnitId }
+                        }
+                    });
+                }
+            }
+        });
     };
     
     const handleAddNewGroup = () => {
@@ -158,28 +159,15 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({ isEdit, data, onClo
 
                 <div>
                     <label className={formLabelClass}>Birim</label>
-                    {isAddingUnit ? (
-                        <div className="p-3 border rounded-md bg-slate-50 space-y-2">
-                            <div className="grid grid-cols-2 gap-2">
-                                <input type="text" placeholder="Birim Adı (örn: Adet)" value={newUnitName} onChange={e => setNewUnitName(e.target.value)} className={formInputClass} autoFocus />
-                                <input type="text" placeholder="Kısaltma (örn: adt)" value={newUnitAbbr} onChange={e => setNewUnitAbbr(e.target.value)} className={formInputClass} />
-                            </div>
-                            <div className="flex justify-end gap-2">
-                                <button type="button" onClick={() => { setIsAddingUnit(false); setNewUnitName(''); setNewUnitAbbr(''); }} className="font-semibold py-1 px-3 text-sm rounded-md transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300">İptal</button>
-                                <button type="button" onClick={handleSaveNewUnit} className="font-semibold py-1 px-3 text-sm rounded-md transition-colors bg-indigo-600 text-white hover:bg-indigo-700">Ekle</button>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-2">
-                          <select value={product.unit_id} onChange={e => handleChange('unit_id', e.target.value)} className={`${formInputClass} flex-grow ${errors.unit_id ? 'border-red-500' : ''}`}>
-                            <option value="">Seçiniz...</option>
-                            {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                          </select>
-                          <button type="button" onClick={() => setIsAddingUnit(true)} className="flex-shrink-0 h-12 w-12 rounded-md inline-flex items-center justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300" title="Yeni Birim Ekle">
-                            <PlusIcon />
-                          </button>
-                        </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                        <select value={product.unit_id} onChange={e => handleChange('unit_id', e.target.value)} className={`${formInputClass} flex-grow ${errors.unit_id ? 'border-red-500' : ''}`}>
+                        <option value="">Seçiniz...</option>
+                        {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                        </select>
+                        <button type="button" onClick={handleAddNewUnit} className="flex-shrink-0 h-12 w-12 rounded-md inline-flex items-center justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300" title="Yeni Birim Ekle">
+                        <PlusIcon />
+                        </button>
+                    </div>
                 </div>
 
             </div>

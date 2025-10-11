@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+
+
+import React, { useState, useEffect, useMemo } from 'react';
 import { Product, StockMovement, Unit, ProductGroup, WarehouseGroup, Warehouse, Shelf } from '../../types';
-import { findById } from '../../utils/helpers';
+import { findById, formatNumber } from '../../utils/helpers';
 import { useToast } from '../../context/ToastContext';
 import { exportToCsv } from '../../utils/csvExporter';
 import { exportToExcel } from '../../utils/excelExporter';
@@ -41,6 +43,7 @@ const InventoryReportPage: React.FC<{
     const [availableWarehouses, setAvailableWarehouses] = useState<Warehouse[]>(warehouses);
     const [availableShelves, setAvailableShelves] = useState<Shelf[]>([]);
     const [exportFormat, setExportFormat] = useState<'excel' | 'csv'>('excel');
+    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' } | null>(null);
     const { addToast } = useToast();
 
     const getUnitAbbr = (productId: string) => findById(units, findById(products, productId)?.unit_id)?.abbreviation || '';
@@ -159,7 +162,7 @@ const InventoryReportPage: React.FC<{
             return {
                 "Ürün Adı": item.product.name,
                 "SKU": item.product.sku,
-                "Toplam Miktar": `${Number(item.quantity).toLocaleString()} ${getUnitAbbr(item.product.id)}`,
+                "Toplam Miktar": `${formatNumber(item.quantity)} ${getUnitAbbr(item.product.id)}`,
             };
         };
 
@@ -167,19 +170,60 @@ const InventoryReportPage: React.FC<{
     };
 
     const handleExport = () => {
-        if(displayedData.length === 0) {
+        if(sortedData.length === 0) {
             addToast("Dışa aktarılacak veri yok.", 'error');
             return;
         }
 
         const filename = `Envanter_Raporu_${new Date().toISOString().slice(0,10)}`;
         if (exportFormat === 'excel') {
-            exportToExcel(filename, displayedData);
+            exportToExcel(filename, sortedData);
         } else {
-            exportToCsv(filename, displayedData);
+            exportToCsv(filename, sortedData);
         }
     }
     
+    const sortedData = useMemo(() => {
+        let sortableItems = [...displayedData];
+        if (sortConfig) {
+            sortableItems.sort((a, b) => {
+                const aValue = a[sortConfig.key];
+                const bValue = b[sortConfig.key];
+                
+                let valA: any = aValue;
+                let valB: any = bValue;
+                
+                if (sortConfig.key === 'Toplam Miktar') {
+                    const parseQuantity = (quantityString: string) => {
+                        if (!quantityString) return 0;
+                        const numberPart = String(quantityString).split(' ')[0];
+                        const cleanedNumber = numberPart.replace(/\./g, '').replace(',', '.');
+                        return parseFloat(cleanedNumber) || 0;
+                    }
+                    valA = parseQuantity(aValue);
+                    valB = parseQuantity(bValue);
+                }
+
+                if (valA < valB) {
+                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                }
+                if (valA > valB) {
+                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+        return sortableItems;
+    }, [displayedData, sortConfig]);
+
+    const requestSort = (key: string) => {
+        let direction: 'ascending' | 'descending' = 'ascending';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
+
     const headers = ["Ürün Adı", "SKU", "Toplam Miktar"];
     const title = "Envanter Raporu";
 
@@ -229,7 +273,7 @@ const InventoryReportPage: React.FC<{
                             value={exportFormat} 
                             onChange={e => setExportFormat(e.target.value as 'excel' | 'csv')} 
                             className={formInputSmallClass}
-                            disabled={displayedData.length === 0}
+                            disabled={sortedData.length === 0}
                         >
                             <option value="excel">Excel'e Aktar</option>
                             <option value="csv">CSV'e Aktar</option>
@@ -237,7 +281,7 @@ const InventoryReportPage: React.FC<{
                         <button 
                             onClick={handleExport} 
                             className="font-semibold py-2 px-4 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-600 text-white hover:bg-slate-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
-                            disabled={displayedData.length === 0}
+                            disabled={sortedData.length === 0}
                         >
                             Dışa Aktar
                         </button>
@@ -248,11 +292,18 @@ const InventoryReportPage: React.FC<{
                         <table className="w-full text-left">
                             <thead>
                                 <tr className="border-b bg-slate-50">
-                                    {headers.map(header => <th key={header} className="p-4 text-sm font-semibold text-slate-600 uppercase tracking-wider">{header}</th>)}
+                                    {headers.map(header => (
+                                        <th key={header} className="p-4 text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                            <button onClick={() => requestSort(header)} className="w-full text-left flex items-center gap-1 hover:text-slate-800">
+                                                {header}
+                                                {sortConfig?.key === header ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : null}
+                                            </button>
+                                        </th>
+                                    ))}
                                 </tr>
                             </thead>
                             <tbody>
-                                {displayedData.map((row, rowIndex) => (
+                                {sortedData.map((row, rowIndex) => (
                                     <tr key={rowIndex} className="border-b hover:bg-slate-50">
                                         {Object.values(row).map((cell: any, cellIndex) => (
                                             <td key={cellIndex} className="p-4 align-middle text-slate-700">{cell}</td>
