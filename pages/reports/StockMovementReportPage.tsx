@@ -23,6 +23,7 @@ const StockMovementReportPage: React.FC<{
     type Filters = {
         startDate: string;
         endDate: string;
+        transactionType: string;
         warehouseId: string;
         shelfId: string;
         productId: string;
@@ -34,6 +35,7 @@ const StockMovementReportPage: React.FC<{
     const initialFilters: Filters = {
         startDate: '',
         endDate: '',
+        transactionType: 'all',
         warehouseId: '',
         shelfId: '',
         productId: '',
@@ -126,6 +128,29 @@ const StockMovementReportPage: React.FC<{
                 endDate.setHours(23, 59, 59, 999);
                 if (itemDate > endDate) return false;
             }
+
+            if (filters.transactionType && filters.transactionType !== 'all') {
+                switch (filters.transactionType) {
+                    case 'STANDARD_IN':
+                        if (item.transaction_type !== 'STANDARD' || item.type !== 'IN') return false;
+                        break;
+                    case 'STANDARD_OUT':
+                        if (item.transaction_type !== 'STANDARD' || item.type !== 'OUT') return false;
+                        break;
+                    case 'TRANSFER':
+                        if (item.transaction_type !== 'TRANSFER') return false;
+                        break;
+                    case 'PRODUCTION_IN':
+                        if (item.transaction_type !== 'PRODUCTION' || item.type !== 'IN') return false;
+                        break;
+                    case 'PRODUCTION_OUT':
+                        if (item.transaction_type !== 'PRODUCTION' || item.type !== 'OUT') return false;
+                        break;
+                    default:
+                        break;
+                }
+            }
+
             if (filters.productId && item.product_id !== filters.productId) return false;
             if (filters.productGroupId) {
                 const product = findById(products, item.product_id);
@@ -202,7 +227,8 @@ const StockMovementReportPage: React.FC<{
                             "Fiş No": pair.out.voucher_number,
                             "İşlem Türü": "Transfer",
                             "Ürün Adı": product?.name,
-                            "Miktar": `${formatNumber(pair.out.quantity)} ${getUnitAbbr(pair.out.product_id)}`,
+                            "Miktar": formatNumber(pair.out.quantity),
+                            "Birim": getUnitAbbr(pair.out.product_id),
                             "Çıkan Depo": outWarehouse?.name,
                             "Çıkan Raf": outShelf?.name,
                             "Giren Depo": inWarehouse?.name,
@@ -232,7 +258,8 @@ const StockMovementReportPage: React.FC<{
                         "Fiş No": m.voucher_number,
                         "İşlem Türü": işlemTürü,
                         "Ürün Adı": product?.name,
-                        "Miktar": `${formatNumber(m.quantity)} ${getUnitAbbr(m.product_id)}`,
+                        "Miktar": formatNumber(m.quantity),
+                        "Birim": getUnitAbbr(m.product_id),
                         "Çıkan Depo": m.type === 'OUT' ? warehouse?.name : '-',
                         "Çıkan Raf": m.type === 'OUT' ? shelf?.name : '-',
                         "Giren Depo": m.type === 'IN' ? warehouse?.name : '-',
@@ -262,9 +289,8 @@ const StockMovementReportPage: React.FC<{
                 if (sortConfig.key === 'Miktar') {
                     const parseQuantity = (quantityString: string) => {
                         if (!quantityString) return 0;
-                        const numberPart = String(quantityString).split(' ')[0];
                         // "1.234,56" -> "1234.56" for parseFloat
-                        const cleanedNumber = numberPart.replace(/\./g, '').replace(',', '.');
+                        const cleanedNumber = String(quantityString).replace(/\./g, '').replace(',', '.');
                         return parseFloat(cleanedNumber) || 0;
                     }
                     valA = parseQuantity(aValue);
@@ -327,7 +353,7 @@ const StockMovementReportPage: React.FC<{
         }
     }
     
-    const headers = ["Tarih", "Fiş No", "İşlem Türü", "Ürün Adı", "Miktar", "Çıkan Depo", "Çıkan Raf", "Giren Depo", "Giren Raf", "İlgili Cari", "Not", "Kayıt Zamanı", "Güncelleme Zamanı"];
+    const headers = ["Tarih", "Fiş No", "İşlem Türü", "Ürün Adı", "Miktar", "Birim", "Çıkan Depo", "Çıkan Raf", "Giren Depo", "Giren Raf", "İlgili Cari", "Not", "Kayıt Zamanı", "Güncelleme Zamanı"];
     const partyOptions = accounts.map(p => ({id: p.id, name: p.name}));
     const title = "Stok Hareket Raporu";
 
@@ -344,6 +370,23 @@ const StockMovementReportPage: React.FC<{
                     <div>
                         <label htmlFor="endDate" className={formLabelClass}>Bitiş Tarihi</label>
                         <input type="date" name="endDate" id="endDate" value={filters.endDate} onChange={handleDateChange} className={formInputSmallClass} />
+                    </div>
+                    <div>
+                        <label htmlFor="transactionType" className={formLabelClass}>İşlem Türü</label>
+                        <select
+                            name="transactionType"
+                            id="transactionType"
+                            value={filters.transactionType}
+                            onChange={e => handleFilterChange('transactionType', e.target.value)}
+                            className={formInputSmallClass}
+                        >
+                            <option value="all">Tümü</option>
+                            <option value="STANDARD_IN">Giriş</option>
+                            <option value="STANDARD_OUT">Çıkış</option>
+                            <option value="TRANSFER">Transfer</option>
+                            <option value="PRODUCTION_IN">Üretimden Giriş</option>
+                            <option value="PRODUCTION_OUT">Üretim Sarf</option>
+                        </select>
                     </div>
                     <div>
                         <label className={formLabelClass}>Depo</label>
@@ -407,7 +450,7 @@ const StockMovementReportPage: React.FC<{
                         </select>
                         <button 
                             onClick={handleExport} 
-                            className="font-semibold py-2 px-4 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-600 text-white hover:bg-slate-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                            className="font-semibold py-2 px-4 text-sm rounded-md inline-flex items-center justify-center transition-colors bg-slate-600 text-white hover:bg-slate-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
                             disabled={sortedData.length === 0}
                             title='Dışa Aktar'
                             aria-label='Dışa Aktar'
