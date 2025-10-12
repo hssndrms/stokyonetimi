@@ -6,11 +6,13 @@ import { getSupabaseCredentials, setSupabaseCredentials } from '../utils/supabas
 import { formInputClass, formLabelClass } from '../styles/common';
 import { SETUP_SQL } from '../data/setupSql';
 import { VERSION_UPDATES } from '../data/versionUpdates';
+import SupabaseSetupGuidePage from './SupabaseSetupGuidePage';
 
 
 const SetupPage: React.FC<{ onCheckAgain: () => void; reason: 'tables' | 'config' | null; onClose?: () => void; loading: boolean; }> = ({ onCheckAgain, reason, onClose, loading }) => {
     const { addToast } = useToast();
     const [activeTab, setActiveTab] = useState<'setup' | 'updates'>('setup');
+    const [showGuide, setShowGuide] = useState(false);
     
     const [credentials, setCredentials] = useState({ url: '', anonKey: '' });
     
@@ -53,6 +55,10 @@ const SetupPage: React.FC<{ onCheckAgain: () => void; reason: 'tables' | 'config
         await onCheckAgain();
     };
 
+    if (showGuide) {
+        return <SupabaseSetupGuidePage onBack={() => setShowGuide(false)} />;
+    }
+
     const effectiveReason = reason || 'config';
 
     if (effectiveReason === 'config') {
@@ -62,7 +68,10 @@ const SetupPage: React.FC<{ onCheckAgain: () => void; reason: 'tables' | 'config
                     <h1 className="panel-title text-3xl font-bold text-slate-800 dark:text-slate-100 mb-2">Supabase Bağlantı Kurulumu</h1>
                     <p className="panel-description text-slate-600 dark:text-slate-300 mb-6">
                         Uygulamanın veritabanına bağlanabilmesi için Supabase proje bilgilerinizi girin.
-                        Bu bilgileri Supabase projenizin "Project Settings &gt; API" bölümünde bulabilirsiniz.
+                        Bu bilgilere nasıl ulaşacağınızı bilmiyorsanız, 
+                        <button onClick={() => setShowGuide(true)} className="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold ml-1">
+                            adım adım kurulum rehberini görüntüleyebilirsiniz.
+                        </button>
                     </p>
                     <form id="supabase-config-form" onSubmit={handleSaveAndCheck}>
                         <div className="space-y-4">
