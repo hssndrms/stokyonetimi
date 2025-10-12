@@ -30,14 +30,14 @@ const GeneralSettingsPage: React.FC<{
     };
 
     return (
-        <div>
-            <h1 className="text-3xl font-bold text-slate-800 mb-6">Genel Ayarlar</h1>
-            <div className="bg-white p-6 rounded-lg shadow border max-w-2xl mx-auto">
-                <form onSubmit={handleSubmit}>
-                    <h2 className="text-xl font-bold text-slate-800 pb-4 border-b mb-6">Cari Kodlama</h2>
+        <div id="general-settings-page" className="general-settings-page">
+            <h1 className="page-title text-3xl font-bold text-slate-800 dark:text-slate-100 mb-6">Genel Ayarlar</h1>
+            <div className="settings-container bg-white dark:bg-slate-800 p-6 rounded-lg shadow border dark:border-slate-700 max-w-2xl mx-auto">
+                <form id="general-settings-form" onSubmit={handleSubmit}>
+                    <h2 className="section-title text-xl font-bold text-slate-800 dark:text-slate-100 pb-4 border-b dark:border-slate-600 mb-6">Cari Kodlama</h2>
                     <div className="space-y-6">
-                        <fieldset className="border p-4 rounded-md">
-                            <legend className="text-lg font-medium text-slate-700 px-2">Müşteri Kodları</legend>
+                        <fieldset className="settings-group border dark:border-slate-600 p-4 rounded-md">
+                            <legend className="form-legend text-lg font-medium text-slate-700 dark:text-slate-300 px-2">Müşteri Kodları</legend>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                                 <div>
                                     <label htmlFor="customer_code_prefix" className={formLabelClass}>Kod Öneki</label>
@@ -50,8 +50,8 @@ const GeneralSettingsPage: React.FC<{
                             </div>
                         </fieldset>
 
-                        <fieldset className="border p-4 rounded-md">
-                            <legend className="text-lg font-medium text-slate-700 px-2">Tedarikçi Kodları</legend>
+                        <fieldset className="settings-group border dark:border-slate-600 p-4 rounded-md">
+                            <legend className="form-legend text-lg font-medium text-slate-700 dark:text-slate-300 px-2">Tedarikçi Kodları</legend>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                                 <div>
                                     <label htmlFor="supplier_code_prefix" className={formLabelClass}>Kod Öneki</label>
@@ -65,10 +65,10 @@ const GeneralSettingsPage: React.FC<{
                         </fieldset>
                     </div>
 
-                    <h2 className="text-xl font-bold text-slate-800 pb-4 border-b my-6">Stok Fiş Kodlama</h2>
+                    <h2 className="section-title text-xl font-bold text-slate-800 dark:text-slate-100 pb-4 border-b dark:border-slate-600 my-6">Stok Fiş Kodlama</h2>
                     <div className="space-y-6">
-                        <fieldset className="border p-4 rounded-md">
-                            <legend className="text-lg font-medium text-slate-700 px-2">Stok Giriş Fişleri</legend>
+                        <fieldset className="settings-group border dark:border-slate-600 p-4 rounded-md">
+                            <legend className="form-legend text-lg font-medium text-slate-700 dark:text-slate-300 px-2">Stok Giriş Fişleri</legend>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                                 <div>
                                     <label htmlFor="stock_in_prefix" className={formLabelClass}>Kod Öneki</label>
@@ -81,8 +81,8 @@ const GeneralSettingsPage: React.FC<{
                             </div>
                         </fieldset>
                         
-                        <fieldset className="border p-4 rounded-md">
-                            <legend className="text-lg font-medium text-slate-700 px-2">Stok Çıkış Fişleri</legend>
+                        <fieldset className="settings-group border dark:border-slate-600 p-4 rounded-md">
+                            <legend className="form-legend text-lg font-medium text-slate-700 dark:text-slate-300 px-2">Stok Çıkış Fişleri</legend>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                                 <div>
                                     <label htmlFor="stock_out_prefix" className={formLabelClass}>Kod Öneki</label>
@@ -95,8 +95,8 @@ const GeneralSettingsPage: React.FC<{
                             </div>
                         </fieldset>
 
-                         <fieldset className="border p-4 rounded-md">
-                            <legend className="text-lg font-medium text-slate-700 px-2">Stok Transfer Fişleri</legend>
+                         <fieldset className="settings-group border dark:border-slate-600 p-4 rounded-md">
+                            <legend className="form-legend text-lg font-medium text-slate-700 dark:text-slate-300 px-2">Stok Transfer Fişleri</legend>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                                 <div>
                                     <label htmlFor="stock_transfer_prefix" className={formLabelClass}>Kod Öneki</label>
@@ -108,8 +108,8 @@ const GeneralSettingsPage: React.FC<{
                                 </div>
                             </div>
                         </fieldset>
-                         <fieldset className="border p-4 rounded-md">
-                            <legend className="text-lg font-medium text-slate-700 px-2">Üretim Fişleri</legend>
+                         <fieldset className="settings-group border dark:border-slate-600 p-4 rounded-md">
+                            <legend className="form-legend text-lg font-medium text-slate-700 dark:text-slate-300 px-2">Üretim Fişleri</legend>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                                 <div>
                                     <label htmlFor="production_prefix" className={formLabelClass}>Kod Öneki</label>
@@ -124,24 +124,25 @@ const GeneralSettingsPage: React.FC<{
                     </div>
 
 
-                    <div className="flex justify-end mt-8 pt-4 border-t">
-                        <button type="submit" className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-indigo-600 text-white hover:bg-indigo-700">
+                    <div className="form-actions flex justify-end mt-8 pt-4 border-t dark:border-slate-600">
+                        <button id="save-settings-button" type="submit" className="primary-action-button font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-400">
                             Ayarları Kaydet
                         </button>
                     </div>
                 </form>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow border max-w-2xl mx-auto mt-8">
-                <h2 className="text-xl font-bold text-slate-800 pb-4 border-b mb-6">Veritabanı Yönetimi</h2>
-                <p className="text-slate-600 mb-4">
+            <div className="settings-container bg-white dark:bg-slate-800 p-6 rounded-lg shadow border dark:border-slate-700 max-w-2xl mx-auto mt-8">
+                <h2 className="section-title text-xl font-bold text-slate-800 dark:text-slate-100 pb-4 border-b dark:border-slate-600 mb-6">Veritabanı Yönetimi</h2>
+                <p className="text-slate-600 dark:text-slate-300 mb-4">
                     Veritabanı kurulumu (SQL) betiğini görüntülemek veya yeniden çalıştırmak için kurulum ekranını açabilirsiniz. 
                     Bu, genellikle uygulamanın ilk kurulumunda veya veritabanını sıfırlamak istediğinizde gereklidir.
                 </p>
                 <div className="flex justify-start">
                     <button 
+                        id="open-setup-screen-button"
                         onClick={onOpenSetup}
-                        className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-amber-500 text-white hover:bg-amber-600">
+                        className="secondary-action-button font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500">
                         <i className="fa-solid fa-database"></i> Kurulum Ekranını Aç
                     </button>
                 </div>

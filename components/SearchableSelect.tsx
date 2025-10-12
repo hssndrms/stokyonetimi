@@ -65,19 +65,19 @@ const SearchableSelect: React.FC<{
         aria-invalid={error}
       />
       {isOpen && !disabled && (
-        <ul className="absolute z-[110] w-full bg-white border border-slate-300 text-slate-900 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
+        <ul className="searchable-select-dropdown absolute z-[110] w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-200 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
           {filteredOptions.map(option => (
               <li
                 key={option.id}
                 onClick={() => handleSelect(option.id)}
-                className="px-3 py-2 cursor-pointer hover:bg-indigo-100 text-sm"
+                className="dropdown-item px-3 py-2 cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-900 text-sm"
               >
                 {option.name}
               </li>
             ))
           }
            {filteredOptions.length === 0 && (
-            <li className="px-3 py-2 text-sm text-slate-500">Sonuç bulunamadı</li>
+            <li className="dropdown-item-empty px-3 py-2 text-sm text-slate-500 dark:text-slate-400">Sonuç bulunamadı</li>
           )}
         </ul>
       )}

@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Page, ModalState, MenuItem } from './types';
-import { ToastProvider } from './context/ToastContext';
+import { ToastProvider, useToast } from './context/ToastContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { useInventory } from './hooks/useInventory';
 import useLocalStorage from './hooks/useLocalStorage';
+import { SunIcon, MoonIcon } from './components/icons';
 
 import Sidebar, { DEFAULT_MENU_STRUCTURE, ALL_MENU_ITEMS } from './components/Sidebar';
 import Modal from './components/Modal';
@@ -48,13 +50,29 @@ const StaggeredEntry: React.FC<{ children: React.ReactNode; staggerKey: any; }> 
 
     }, [staggerKey]);
 
-    return <div ref={containerRef} className="flex items-center gap-1">{children}</div>;
+    return <div ref={containerRef} id="favorite-actions-bar" className="flex items-center gap-1">{children}</div>;
 };
+
+const ThemeToggleButton = () => {
+    const { theme, toggleTheme } = useTheme();
+    return (
+        <button
+            onClick={toggleTheme}
+            className="theme-toggle-button p-3 rounded-md text-slate-300 hover:bg-slate-700 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            aria-label={theme === 'dark' ? 'Aydınlık temaya geç' : 'Karanlık temaya geç'}
+            title={theme === 'dark' ? 'Aydınlık temaya geç' : 'Karanlık temaya geç'}
+        >
+            {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+        </button>
+    );
+};
+
 
 const TopHeader: React.FC = () => {
     return (
-        <header className="bg-slate-800 text-white h-16 flex-shrink-0 flex items-center px-6 z-20 shadow-md">
-            <h1 className="text-2xl font-bold">Stok Yönetimi</h1>
+        <header id="app-top-header" className="bg-slate-800 text-white h-16 flex-shrink-0 flex items-center justify-between px-6 z-20 shadow-md">
+            <h1 className="app-title text-2xl font-bold">Stok Yönetimi</h1>
+            <ThemeToggleButton />
         </header>
     );
 };
@@ -69,10 +87,11 @@ const ContentHeader: React.FC<{
     const tooltip = isSidebarOpen ? 'Menüyü gizle' : 'Menüyü göster';
     const favoritesKey = favorites.map(f => f.id).join('-');
     return (
-        <header className="bg-white shadow-sm h-16 flex-shrink-0 flex items-center px-4 z-10">
+        <header id="content-header" className="bg-white dark:bg-slate-800 dark:border-b dark:border-slate-700 shadow-sm h-16 flex-shrink-0 flex items-center px-4 z-10">
             <button
+                id="sidebar-toggle-button"
                 onClick={toggleSidebar}
-                className="p-3 rounded-md text-slate-600 hover:bg-slate-200 hover:text-indigo-600 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="p-3 rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 aria-label={tooltip}
                 title={tooltip}
             >
@@ -83,8 +102,9 @@ const ContentHeader: React.FC<{
                     {favorites.map(fav => (
                         <button
                             key={fav.id}
+                            id={`favorite-button-${fav.id}`}
                             onClick={() => onFavoriteClick(fav.id)}
-                            className="p-3 rounded-md text-slate-600 hover:bg-slate-200 hover:text-indigo-600 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="favorite-action-button p-3 rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             aria-label={fav.label}
                             title={fav.label}
                         >
@@ -149,10 +169,10 @@ const App: React.FC = () => {
 
     if (error) {
         return (
-            <div className="flex items-center justify-center h-screen bg-slate-100">
-                <div className="text-center p-8 bg-white rounded-lg shadow-md max-w-lg">
+            <div className="flex items-center justify-center h-screen bg-slate-100 dark:bg-slate-900">
+                <div id="error-message-box" className="text-center p-8 bg-white dark:bg-slate-800 rounded-lg shadow-md max-w-lg">
                     <h2 className="text-2xl font-bold text-red-600 mb-4">Uygulama Hatası</h2>
-                    <p className="text-slate-700">{error}</p>
+                    <p className="text-slate-700 dark:text-slate-300">{error}</p>
                 </div>
             </div>
         );
@@ -160,10 +180,10 @@ const App: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-screen bg-slate-100">
-                 <div className="flex items-center gap-4">
-                    <i className="fa-solid fa-spinner fa-spin fa-2x text-indigo-600"></i>
-                    <span className="text-xl text-slate-700">Veriler yükleniyor...</span>
+            <div className="flex items-center justify-center h-screen bg-slate-100 dark:bg-slate-900">
+                 <div id="loading-indicator" className="flex items-center gap-4">
+                    <i className="fa-solid fa-spinner fa-spin fa-2x text-indigo-600 dark:text-indigo-400"></i>
+                    <span className="text-xl text-slate-700 dark:text-slate-300">Veriler yükleniyor...</span>
                 </div>
             </div>
         );
@@ -199,18 +219,18 @@ const App: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col h-screen font-sans">
+        <div id="app-container" className="flex flex-col h-screen font-sans">
             <TopHeader />
-            <div className="flex flex-1 overflow-hidden">
+            <div id="app-body" className="flex flex-1 overflow-hidden">
                 <Sidebar currentPage={page} setPage={setPage} isOpen={isSidebarOpen} menuStructure={menuStructure} />
-                <div className="flex-1 flex flex-col overflow-hidden">
+                <div id="content-wrapper" className="flex-1 flex flex-col overflow-hidden">
                     <ContentHeader
                         isSidebarOpen={isSidebarOpen}
                         toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
                         favorites={favoriteItems}
                         onFavoriteClick={handleFavoriteClick}
                     />
-                    <main className="flex-1 p-8 overflow-y-auto bg-slate-100 text-slate-800">
+                    <main id="main-content" className="flex-1 p-8 overflow-y-auto bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200">
                         {renderPage()}
                     </main>
                 </div>
@@ -229,9 +249,11 @@ const App: React.FC = () => {
 
 
 const AppWrapper = () => (
-    <ToastProvider>
-        <App />
-    </ToastProvider>
+    <ThemeProvider>
+        <ToastProvider>
+            <App />
+        </ToastProvider>
+    </ThemeProvider>
 );
 
 export default AppWrapper;

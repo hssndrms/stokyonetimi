@@ -291,24 +291,24 @@ const StockLedgerReportPage: React.FC<{
     const title = "Stok Ekstresi";
 
     return (
-        <div>
-            <h1 className="text-3xl font-bold text-slate-800 mb-6">{title}</h1>
+        <div id="stock-ledger-report-page">
+            <h1 className="page-title text-3xl font-bold text-slate-800 dark:text-slate-100 mb-6">{title}</h1>
 
-            <div className="bg-white p-4 rounded-lg shadow border mb-6">
+            <div id="report-filters" className="filter-panel bg-white dark:bg-slate-800 p-4 rounded-lg shadow border dark:border-slate-700 mb-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                     <div>
+                     <div className="filter-group">
                         <label className={formLabelClass}>Ürün Grubu</label>
                          <SearchableSelect options={productGroups} value={filters.productGroupId} onChange={(val) => handleFilterChange('productGroupId', val)} placeholder="Grup Seçin"/>
                     </div>
-                    <div>
+                    <div className="filter-group">
                         <label className={formLabelClass}>Ürün (*Zorunlu)</label>
                          <SearchableSelect options={availableProducts} value={filters.productId} onChange={(val) => handleFilterChange('productId', val)} placeholder="Ürün Seçin"/>
                     </div>
-                     <div>
+                     <div className="filter-group">
                         <label className={formLabelClass}>Depo</label>
                         <SearchableSelect options={warehouses} value={filters.warehouseId} onChange={(val) => handleFilterChange('warehouseId', val)} placeholder="Depo Seçin" disabled={!filters.listWarehouseDetail}/>
                     </div>
-                    <div>
+                    <div className="filter-group">
                         <label className={formLabelClass}>Raf</label>
                         <SearchableSelect 
                             options={availableShelves} 
@@ -318,15 +318,15 @@ const StockLedgerReportPage: React.FC<{
                             disabled={!filters.listWarehouseDetail || !filters.warehouseId || availableShelves.length === 0 || !filters.listShelfDetail} 
                         />
                     </div>
-                    <div>
+                    <div className="filter-group">
                         <label htmlFor="startDate" className={formLabelClass}>Başlangıç Tarihi</label>
                         <input type="date" name="startDate" id="startDate" value={filters.startDate} onChange={handleDateChange} className={formInputSmallClass} />
                     </div>
-                    <div>
+                    <div className="filter-group">
                         <label htmlFor="endDate" className={formLabelClass}>Bitiş Tarihi</label>
                         <input type="date" name="endDate" id="endDate" value={filters.endDate} onChange={handleDateChange} className={formInputSmallClass} />
                     </div>
-                    <div>
+                    <div className="filter-group">
                         <label htmlFor="notes" className={formLabelClass}>Not</label>
                         <input
                             type="text"
@@ -339,7 +339,7 @@ const StockLedgerReportPage: React.FC<{
                         />
                     </div>
                 </div>
-                <div className="flex justify-between items-center mt-4 pt-4 border-t">
+                <div className="flex justify-between items-center mt-4 pt-4 border-t dark:border-slate-700">
                     <div className="flex items-center gap-4">
                         <div className="flex items-center">
                             <input
@@ -347,9 +347,9 @@ const StockLedgerReportPage: React.FC<{
                                 id="listOpeningBalance"
                                 checked={filters.listOpeningBalance}
                                 onChange={(e) => setFilters(f => ({...f, listOpeningBalance: e.target.checked}))}
-                                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-slate-900"
                             />
-                            <label htmlFor="listOpeningBalance" className="ml-2 text-sm font-medium text-slate-700">
+                            <label htmlFor="listOpeningBalance" className="ml-2 text-sm font-medium text-slate-700 dark:text-slate-300">
                                 Devir Listelensin
                             </label>
                         </div>
@@ -368,9 +368,9 @@ const StockLedgerReportPage: React.FC<{
                                         listShelfDetail: isChecked ? f.listShelfDetail : false
                                     }));
                                 }}
-                                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-slate-900"
                             />
-                            <label htmlFor="listWarehouseDetail" className="ml-2 text-sm font-medium text-slate-700">
+                            <label htmlFor="listWarehouseDetail" className="ml-2 text-sm font-medium text-slate-700 dark:text-slate-300">
                                 Depo Detayı Listelensin
                             </label>
                         </div>
@@ -387,34 +387,36 @@ const StockLedgerReportPage: React.FC<{
                                         shelfId: isChecked ? f.shelfId : ''
                                     }));
                                 }}
-                                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-slate-900"
                                 disabled={!filters.listWarehouseDetail}
                             />
-                            <label htmlFor="listShelfDetail" className="ml-2 text-sm font-medium text-slate-700 disabled:text-slate-400">
+                            <label htmlFor="listShelfDetail" className="ml-2 text-sm font-medium text-slate-700 dark:text-slate-300 disabled:text-slate-400 dark:disabled:text-slate-500">
                                 Raf Detayı Listelensin
                             </label>
                         </div>
                     </div>
                      <div className="flex gap-2">
                         <button
+                            id="clear-filters-button"
                             type="button"
                             onClick={handleClearFilters}
-                            className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300"
+                            className="secondary-action-button font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500"
                         >
                             <EraserIcon /> Filtreleri Temizle
                         </button>
-                        <button onClick={handleListClick} className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-indigo-600 text-white hover:bg-indigo-700">
+                        <button id="run-report-button" onClick={handleListClick} className="primary-action-button font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-400">
                             <ListIcon /> Listele
                         </button>
                     </div>
                 </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow border overflow-hidden">
-                <div className="p-4 flex justify-between items-center border-b">
-                    <h3 className="text-lg font-bold">Rapor Sonuçları</h3>
+            <div id="report-results" className="results-container bg-white dark:bg-slate-800 rounded-lg shadow border dark:border-slate-700 overflow-hidden">
+                <div className="p-4 flex justify-between items-center border-b dark:border-slate-700">
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Rapor Sonuçları</h3>
                     <div className="flex items-center gap-4">
                         <select 
+                            id="export-format-select"
                             value={exportFormat} 
                             onChange={e => setExportFormat(e.target.value as 'excel' | 'csv')} 
                             className={formInputSmallClass}
@@ -424,8 +426,9 @@ const StockLedgerReportPage: React.FC<{
                             <option value="csv">CSV'e Aktar</option>
                         </select>
                         <button 
+                            id="export-button"
                             onClick={handleExport} 
-                            className="font-semibold py-2 px-4 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-600 text-white hover:bg-slate-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                            className="secondary-action-button font-semibold py-2 px-4 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-600 text-white hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-500 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed"
                             disabled={sortedData.length === 0}
                             title='Dışa Aktar'
                             aria-label='Dışa Aktar'
@@ -436,12 +439,12 @@ const StockLedgerReportPage: React.FC<{
                 </div>
                 {displayedData.length > 0 ? (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
-                            <thead>
-                                <tr className="border-b bg-slate-50">
+                        <table id="results-table" className="data-table w-full text-left text-sm">
+                            <thead className="table-header">
+                                <tr className="border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
                                     {headers.map(header => (
-                                        <th key={header} className="p-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                                            <button onClick={() => requestSort(header === 'Tarih' ? 'Sıralama' : header)} className="w-full text-left flex items-center gap-1 hover:text-slate-800">
+                                        <th key={header} className="table-header-cell p-2 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                                            <button onClick={() => requestSort(header === 'Tarih' ? 'Sıralama' : header)} className="sort-button w-full text-left flex items-center gap-1 hover:text-slate-800 dark:hover:text-slate-100">
                                                 {header}
                                                 {(sortConfig.key === header || (header === 'Tarih' && sortConfig.key === 'Sıralama')) ? (
                                                     sortConfig.direction === 'ascending' ? '▲' : '▼'
@@ -451,12 +454,12 @@ const StockLedgerReportPage: React.FC<{
                                     ))}
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="table-body">
                                {sortedData.map((row, rowIndex) => (
-                                    <tr key={rowIndex} className="border-b hover:bg-slate-50">
+                                    <tr key={rowIndex} className="table-row border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
                                         {headers.map(header => {
                                             let cellValue = row[header];
-                                            let cellClass = "p-2 align-middle text-slate-700 text-xs";
+                                            let cellClass = "table-cell p-2 align-middle text-slate-700 dark:text-slate-300 text-xs";
                                             if (header === 'Miktar' || header === 'Kalan') {
                                                 cellClass += " text-right font-mono";
                                                 cellValue = formatNumber(cellValue);
@@ -466,7 +469,7 @@ const StockLedgerReportPage: React.FC<{
                                                     {header === 'Fiş No' ? (
                                                         <button 
                                                             onClick={() => handleVoucherClick(cellValue)}
-                                                            className="font-mono text-indigo-600 hover:text-indigo-800 hover:underline disabled:text-slate-500 disabled:no-underline disabled:cursor-default"
+                                                            className="voucher-link font-mono text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline disabled:text-slate-500 dark:disabled:text-slate-400 disabled:no-underline disabled:cursor-default"
                                                             disabled={cellValue === 'DEVİR'}
                                                         >
                                                             {cellValue}
@@ -483,7 +486,7 @@ const StockLedgerReportPage: React.FC<{
                         </table>
                     </div>
                 ) : (
-                    <div className="p-8 text-center text-slate-500">
+                    <div className="empty-message p-8 text-center text-slate-500 dark:text-slate-400">
                         Raporu görüntülemek için lütfen bir ürün, depo ve tarih aralığı seçip "Listele" butonuna tıklayın.
                     </div>
                 )}

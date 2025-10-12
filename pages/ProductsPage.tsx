@@ -51,14 +51,14 @@ const ProductsPage: React.FC<{
     })), [filteredItems, units, productGroups]);
 
     return (
-        <div>
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-slate-800">Ürünler</h1>
+        <div id="products-page" className="products-page">
+            <div className="page-header flex justify-between items-center mb-6">
+                <h1 className="page-title text-3xl font-bold text-slate-800 dark:text-slate-100">Ürünler</h1>
             </div>
 
-            <div className="bg-white p-4 rounded-lg shadow border mb-6">
+            <div id="filter-panel" className="filter-panel bg-white dark:bg-slate-800 p-4 rounded-lg shadow border dark:border-slate-700 mb-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
+                    <div className="filter-group">
                         <label htmlFor="nameFilter" className={formLabelClass}>Ürün Adı</label>
                         <input
                             id="nameFilter"
@@ -69,7 +69,7 @@ const ProductsPage: React.FC<{
                             className={formInputClass}
                         />
                     </div>
-                     <div>
+                     <div className="filter-group">
                         <label htmlFor="skuFilter" className={formLabelClass}>SKU</label>
                         <input
                             id="skuFilter"
@@ -80,7 +80,7 @@ const ProductsPage: React.FC<{
                             className={formInputClass}
                         />
                     </div>
-                    <div>
+                    <div className="filter-group">
                         <label htmlFor="groupFilter" className={formLabelClass}>Ürün Grubu</label>
                         <select
                             id="groupFilter"

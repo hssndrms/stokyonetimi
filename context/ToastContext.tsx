@@ -29,14 +29,15 @@ const Toast: React.FC<{ toast: ToastInfo; onClose: (id: string) => void }> = ({ 
   };
 
   const toastStyles = {
-    success: 'bg-green-500 text-white',
-    error: 'bg-red-500 text-white',
-    info: 'bg-blue-500 text-white',
+    success: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200',
+    error: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200',
+    info: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',
   };
 
   return (
     <div
-      className={`relative flex items-center gap-4 p-4 mb-4 rounded-md shadow-lg transition-transform transform-gpu animate-toast-in ${toastStyles[type]}`}
+      id={`toast-message-${id}`}
+      className={`toast-message relative flex items-center gap-4 p-4 mb-4 rounded-md shadow-lg transition-transform transform-gpu animate-toast-in ${toastStyles[type]}`}
       role="alert"
       aria-live="assertive"
     >
@@ -44,7 +45,7 @@ const Toast: React.FC<{ toast: ToastInfo; onClose: (id: string) => void }> = ({ 
       <div className="flex-grow">{message}</div>
       <button
         onClick={() => onClose(id)}
-        className="p-1 rounded-full hover:bg-black/20 focus:outline-none focus:ring-2 focus:ring-white"
+        className="toast-close-button p-1 rounded-full hover:bg-black/20 focus:outline-none focus:ring-2 focus:ring-white"
         aria-label="Close"
       >
         <XMarkIcon />
@@ -56,7 +57,7 @@ const Toast: React.FC<{ toast: ToastInfo; onClose: (id: string) => void }> = ({ 
 // Toast Container Component
 const ToastContainer: React.FC<{ toasts: ToastInfo[]; removeToast: (id: string) => void }> = ({ toasts, removeToast }) => {
   return (
-    <div className="fixed top-5 right-5 z-[100] w-full max-w-sm">
+    <div id="toast-container" className="fixed top-5 right-5 z-[100] w-full max-w-sm">
       {toasts.map((toast) => (
         <Toast key={toast.id} toast={toast} onClose={removeToast} />
       ))}

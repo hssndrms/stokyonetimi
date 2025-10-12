@@ -38,3 +38,7 @@ export const StarOutlineIcon = () => <i className="fa-regular fa-star fa-fw"></i
 export const DownloadIcon = () => <i className="fa-solid fa-download fa-fw"></i>;
 export const EraserIcon = () => <i className="fa-solid fa-eraser"></i>;
 export const ListIcon = () => <i className="fa-solid fa-list-ul"></i>;
+
+// Theme Icons
+export const SunIcon = () => <i className="fa-solid fa-sun fa-fw"></i>;
+export const MoonIcon = () => <i className="fa-solid fa-moon fa-fw"></i>;

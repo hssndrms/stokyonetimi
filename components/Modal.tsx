@@ -114,11 +114,11 @@ const Modal: React.FC<ModalProps> = ({ state, onClose, setModal, ...props }) => 
     }
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <div ref={modalRef} className={`bg-white rounded-lg shadow-xl w-full ${modalWidthClass()} p-6 relative`}>
-                <div className="flex justify-between items-start pb-4 border-b mb-6">
-                    <h2 className="text-2xl font-bold text-slate-800">{renderTitle()}</h2>
-                    <button onClick={onClose} className="p-1 rounded-full text-slate-500 hover:bg-slate-200 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400">
+        <div id="modal-overlay" className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <div ref={modalRef} id="modal-panel" className={`bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full ${modalWidthClass()} p-6 relative`}>
+                <div id="modal-header" className="flex justify-between items-start pb-4 border-b dark:border-slate-700 mb-6">
+                    <h2 className="modal-title text-2xl font-bold text-slate-800 dark:text-slate-100">{renderTitle()}</h2>
+                    <button id="modal-close-button" onClick={onClose} className="p-1 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500">
                         <XMarkIcon />
                     </button>
                 </div>

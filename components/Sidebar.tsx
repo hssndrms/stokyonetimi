@@ -141,10 +141,11 @@ const SubMenu: React.FC<{
     }, [isActive, currentPage]);
 
     return (
-        <li>
+        <li className="submenu-container">
             <button
+                id={`submenu-button-${item.id}`}
                 onClick={() => setIsOpen(!isOpen)}
-                className={`w-full flex items-center justify-between gap-3 px-4 py-3 mb-1 rounded-lg transition-colors font-medium text-slate-300 hover:bg-slate-700 hover:text-white ${isActive ? 'bg-slate-700 text-white' : ''}`}
+                className={`submenu-toggle-button w-full flex items-center justify-between gap-3 px-4 py-3 mb-1 rounded-lg transition-colors font-medium text-slate-300 hover:bg-slate-700 hover:text-white ${isActive ? 'bg-slate-700 text-white' : ''}`}
             >
                 <div className="flex items-center gap-3">
                     {getGroupIcon(item.id)}
@@ -153,16 +154,17 @@ const SubMenu: React.FC<{
                 <i className={`fa-solid fa-chevron-down transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}></i>
             </button>
             {isOpen && (
-                <ul className="pl-4 py-1">
+                <ul className="submenu-list pl-4 py-1">
                     {item.children?.map(child => (
                         child.children ? (
                              <SubMenu key={child.id} item={child} currentPage={currentPage} setPage={setPage} />
                         ) : (
-                        <li key={child.id}>
+                        <li key={child.id} className="menu-item-container">
                             <a
                                 href="#"
+                                id={`menu-item-link-${child.id}`}
                                 onClick={(e) => { e.preventDefault(); setPage(child.id as Page); }}
-                                className={`flex items-center gap-3 px-4 py-2 mb-1 rounded-lg transition-colors font-medium text-sm text-slate-400 hover:bg-slate-700 hover:text-white ${currentPage === child.id ? 'bg-indigo-600 text-white' : ''}`}
+                                className={`menu-item-link flex items-center gap-3 px-4 py-2 mb-1 rounded-lg transition-colors font-medium text-sm text-slate-400 hover:bg-slate-700 hover:text-white ${currentPage === child.id ? 'bg-indigo-600 text-white' : ''}`}
                             >
                                 {ALL_MENU_ITEMS[child.id]?.icon}
                                 <span>{ALL_MENU_ITEMS[child.id]?.label || child.label}</span>
@@ -180,19 +182,20 @@ const Sidebar: React.FC<{ currentPage: Page; setPage: (page: Page) => void; isOp
     const visibleMenuStructure = useMemo(() => filterHiddenItems(menuStructure), [menuStructure]);
     
     return (
-        <aside className={`bg-slate-800 text-white flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? 'w-64' : 'w-0'}`}>
+        <aside id="app-sidebar" className={`bg-slate-800 text-white flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? 'w-64' : 'w-0'}`}>
             <div className="w-64 h-full flex flex-col">
-                <nav className="flex-1 px-4 py-6 overflow-y-auto">
-                    <ul>
+                <nav id="sidebar-nav" className="flex-1 px-4 py-6 overflow-y-auto">
+                    <ul className="menu-list">
                          {visibleMenuStructure.map(item =>
                             item.children ? (
                                 <SubMenu key={item.id} item={item} currentPage={currentPage} setPage={setPage} />
                             ) : (
-                                <li key={item.id}>
+                                <li key={item.id} className="menu-item-container">
                                     <a
                                         href="#"
+                                        id={`menu-item-link-${item.id}`}
                                         onClick={(e) => { e.preventDefault(); setPage(item.id as Page); }}
-                                        className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-lg transition-colors font-medium text-slate-300 hover:bg-slate-700 hover:text-white ${currentPage === item.id ? 'bg-indigo-600 text-white' : ''}`}
+                                        className={`menu-item-link flex items-center gap-3 px-4 py-3 mb-1 rounded-lg transition-colors font-medium text-slate-300 hover:bg-slate-700 hover:text-white ${currentPage === item.id ? 'bg-indigo-600 text-white' : ''}`}
                                     >
                                         {ALL_MENU_ITEMS[item.id]?.icon}
                                         <span>{ALL_MENU_ITEMS[item.id]?.label || item.label}</span>
@@ -202,7 +205,7 @@ const Sidebar: React.FC<{ currentPage: Page; setPage: (page: Page) => void; isOp
                         )}
                     </ul>
                 </nav>
-                <div className="p-4 text-center text-xs text-slate-500 border-t border-slate-700">
+                <div id="app-version-footer" className="p-4 text-center text-xs text-slate-500 border-t border-slate-700">
                     Versiyon: {APP_VERSION}
                 </div>
             </div>

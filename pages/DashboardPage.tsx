@@ -77,54 +77,54 @@ const DashboardPage: React.FC<{
 
 
     return (
-        <div>
-            <h1 className="text-3xl font-bold text-slate-800 mb-6">Anasayfa</h1>
-            <div className="mb-8">
+        <div id="dashboard-page" className="dashboard-page">
+            <h1 className="page-title text-3xl font-bold text-slate-800 dark:text-slate-100 mb-6">Anasayfa</h1>
+            <div id="stats-section" className="mb-8">
                  {productGroups.length > 0 ? (
-                    <div className="flex flex-wrap gap-4">
+                    <div className="stats-grid flex flex-wrap gap-4">
                         {productCountsByGroup.map(group => (
-                            <div key={group.id} className="bg-white p-6 rounded-lg shadow border flex-grow min-w-[200px] max-w-xs">
-                                <h3 className="text-sm font-medium text-slate-500 truncate" title={group.name}>{group.name}</h3>
-                                <p className="text-4xl font-bold text-slate-800 mt-2">{formatNumber(group.count)}</p>
+                            <div key={group.id} className="stat-card bg-white dark:bg-slate-800 p-6 rounded-lg shadow border dark:border-slate-700 flex-grow min-w-[200px] max-w-xs">
+                                <h3 className="stat-title text-sm font-medium text-slate-500 dark:text-slate-400 truncate" title={group.name}>{group.name}</h3>
+                                <p className="stat-value text-4xl font-bold text-slate-800 dark:text-slate-100 mt-2">{formatNumber(group.count)}</p>
                             </div>
                         ))}
                     </div>
                 ) : (
-                     <div className="bg-white p-6 rounded-lg shadow border max-w-sm">
-                        <h3 className="text-sm font-medium text-slate-500">Toplam Ürün Çeşidi</h3>
-                        <p className="text-4xl font-bold text-slate-800 mt-2">{products.length}</p>
+                     <div className="stat-card bg-white dark:bg-slate-800 p-6 rounded-lg shadow border dark:border-slate-700 max-w-sm">
+                        <h3 className="stat-title text-sm font-medium text-slate-500 dark:text-slate-400">Toplam Ürün Çeşidi</h3>
+                        <p className="stat-value text-4xl font-bold text-slate-800 dark:text-slate-100 mt-2">{products.length}</p>
                     </div>
                 )}
             </div>
-            <div className="flex flex-wrap gap-4 mb-8">
-                <button onClick={() => setModal({ type: 'STOCK_IN' })} className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-green-600 text-white hover:bg-green-700">
+            <div id="quick-actions-section" className="flex flex-wrap gap-4 mb-8">
+                <button onClick={() => setModal({ type: 'STOCK_IN' })} className="quick-action-button font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-green-600 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600">
                     <ArrowRightToBracketIcon /> Yeni Stok Girişi
                 </button>
-                <button onClick={() => setModal({ type: 'STOCK_OUT' })} className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-red-600 text-white hover:bg-red-700">
+                <button onClick={() => setModal({ type: 'STOCK_OUT' })} className="quick-action-button font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600">
                     <ArrowRightFromBracketIcon /> Yeni Stok Çıkışı
                 </button>
-                <button onClick={() => setModal({ type: 'STOCK_TRANSFER' })} className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-orange-600 text-white hover:bg-orange-700">
+                <button onClick={() => setModal({ type: 'STOCK_TRANSFER' })} className="quick-action-button font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-orange-500 text-white hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-500">
                     <DollyIcon /> Yeni Transfer Hareketi
                 </button>
-                <button onClick={() => setModal({ type: 'ADD_PRODUCTION_VOUCHER' })} className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-purple-600 text-white hover:bg-purple-700">
+                <button onClick={() => setModal({ type: 'ADD_PRODUCTION_VOUCHER' })} className="quick-action-button font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-purple-600 text-white hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600">
                     <IndustryIcon /> Yeni Üretim Fişi
                 </button>
-                <button onClick={() => setModal({ type: 'ADD_PRODUCT' })} className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-sky-600 text-white hover:bg-sky-700">
+                <button onClick={() => setModal({ type: 'ADD_PRODUCT' })} className="quick-action-button font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-sky-600 text-white hover:bg-sky-700 dark:bg-sky-700 dark:hover:bg-sky-600">
                     <CubeIcon /> Yeni Ürün Ekle
                 </button>
-                <button onClick={() => setModal({ type: 'ADD_ACCOUNT' })} className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-sky-600 text-white hover:bg-sky-700">
+                <button onClick={() => setModal({ type: 'ADD_ACCOUNT' })} className="quick-action-button font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-teal-600 text-white hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-600">
                     <UserPlusIcon /> Yeni Cari Ekle
                 </button>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow border">
-                <h3 className="text-xl font-bold text-slate-800 mb-4">Son Stok Hareketleri</h3>
+            <div id="recent-movements-section" className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow border dark:border-slate-700">
+                <h3 className="section-title text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Son Stok Hareketleri</h3>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left">
+                    <table className="data-table w-full text-left">
                         <thead>
-                            <tr className="border-b bg-slate-50">
+                            <tr className="table-header-row border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
                                 {headers.map(header => (
-                                    <th key={header.key} className="p-4 text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                        <button onClick={() => requestSort(header.key)} className="w-full text-left flex items-center gap-1 hover:text-slate-800">
+                                    <th key={header.key} className="table-header-cell p-4 text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                                        <button onClick={() => requestSort(header.key)} className="sort-button w-full text-left flex items-center gap-1 hover:text-slate-800 dark:hover:text-slate-100">
                                             {header.label}
                                             {sortConfig.key === header.key ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : null}
                                         </button>
@@ -132,18 +132,18 @@ const DashboardPage: React.FC<{
                                 ))}
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="table-body">
                             {sortedRecentMovements.map(m => (
-                                <tr key={m.id} className="border-b">
-                                    <td className="p-4 align-middle text-slate-700">{new Date(m.date).toLocaleDateString()}</td>
-                                    <td className="p-4 align-middle text-slate-700 font-mono">{m.voucher_number}</td>
-                                    <td className="p-4 align-middle text-slate-700">{m.productName}</td>
-                                    <td className="p-4 align-middle text-slate-700">
-                                        <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${m.type === 'IN' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                <tr key={m.id} className="table-row border-b dark:border-slate-700">
+                                    <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-300">{new Date(m.date).toLocaleDateString()}</td>
+                                    <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-300 font-mono">{m.voucher_number}</td>
+                                    <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-300">{m.productName}</td>
+                                    <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-300">
+                                        <span className={`status-badge px-2.5 py-1 text-xs font-semibold rounded-full ${m.type === 'IN' ? 'bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-800/30 dark:text-red-200'}`}>
                                             {m.type === 'IN' ? 'GİRİŞ' : 'ÇIKIŞ'}
                                         </span>
                                     </td>
-                                    <td className="p-4 align-middle text-slate-700 font-medium">{formatNumber(m.quantity)}</td>
+                                    <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-200 font-medium">{formatNumber(m.quantity)}</td>
                                 </tr>
                             ))}
                         </tbody>

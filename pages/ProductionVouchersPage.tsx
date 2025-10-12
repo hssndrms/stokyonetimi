@@ -85,61 +85,61 @@ const ProductionVouchersPage: React.FC<{
     };
 
     return (
-        <div>
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-slate-800">Üretim Fişleri</h1>
-                <button onClick={() => setModal({ type: 'ADD_PRODUCTION_VOUCHER' })} className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-indigo-600 text-white hover:bg-indigo-700">
+        <div id="production-vouchers-page">
+            <div className="page-header flex justify-between items-center mb-6">
+                <h1 className="page-title text-3xl font-bold text-slate-800 dark:text-slate-100">Üretim Fişleri</h1>
+                <button id="add-new-voucher-button" onClick={() => setModal({ type: 'ADD_PRODUCTION_VOUCHER' })} className="primary-action-button font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-400">
                     <PlusIcon /> Yeni Üretim Fişi
                 </button>
             </div>
 
-            <div className="bg-white rounded-lg shadow border overflow-hidden">
+            <div className="data-table-container bg-white dark:bg-slate-800 rounded-lg shadow border dark:border-slate-700 overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left">
+                    <table id="vouchers-table" className="data-table w-full text-left">
                         <thead>
-                            <tr className="border-b bg-slate-50">
-                                <th className="p-4 text-sm font-semibold text-slate-600 uppercase tracking-wider w-1/6">
-                                    <button onClick={() => requestSort('date')} className="w-full text-left flex items-center gap-1">Tarih {sortConfig.key === 'date' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}</button>
+                            <tr className="table-header-row border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
+                                <th className="table-header-cell p-4 text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider w-1/6">
+                                    <button onClick={() => requestSort('date')} className="sort-button w-full text-left flex items-center gap-1">Tarih {sortConfig.key === 'date' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}</button>
                                 </th>
-                                <th className="p-4 text-sm font-semibold text-slate-600 uppercase tracking-wider w-1/6">
-                                    <button onClick={() => requestSort('voucher_number')} className="w-full text-left flex items-center gap-1">Fiş No {sortConfig.key === 'voucher_number' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}</button>
+                                <th className="table-header-cell p-4 text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider w-1/6">
+                                    <button onClick={() => requestSort('voucher_number')} className="sort-button w-full text-left flex items-center gap-1">Fiş No {sortConfig.key === 'voucher_number' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}</button>
                                 </th>
-                                <th className="p-4 text-sm font-semibold text-slate-600 uppercase tracking-wider w-2/6">Kullanılan Malzemeler (Gider)</th>
-                                <th className="p-4 text-sm font-semibold text-slate-600 uppercase tracking-wider w-2/6">Üretilen Ürünler (Girdi)</th>
+                                <th className="table-header-cell p-4 text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider w-2/6">Kullanılan Malzemeler (Gider)</th>
+                                <th className="table-header-cell p-4 text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider w-2/6">Üretilen Ürünler (Girdi)</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="table-body">
                             {sortedData.map(voucher => (
-                                <tr key={voucher.voucher_number} className="border-b hover:bg-slate-50">
-                                    <td className="p-4 align-top text-slate-700">{new Date(voucher.date).toLocaleDateString()}</td>
-                                    <td className="p-4 align-top">
+                                <tr key={voucher.voucher_number} className="voucher-row table-row border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                                    <td className="table-cell p-4 align-top text-slate-700 dark:text-slate-300">{new Date(voucher.date).toLocaleDateString()}</td>
+                                    <td className="table-cell p-4 align-top">
                                         <button 
                                             onClick={() => handleVoucherClick(voucher.voucher_number)}
-                                            className="font-mono text-indigo-600 hover:text-indigo-800 hover:underline"
+                                            className="voucher-link font-mono text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline"
                                         >
                                             {voucher.voucher_number}
                                         </button>
-                                        {voucher.notes && <p className="text-xs text-slate-500 mt-1 truncate" title={voucher.notes}>Not: {voucher.notes}</p>}
+                                        {voucher.notes && <p className="voucher-notes text-xs text-slate-500 dark:text-slate-400 mt-1 truncate" title={voucher.notes}>Not: {voucher.notes}</p>}
                                     </td>
-                                    <td className="p-4 align-top text-slate-700 text-sm">
-                                        <ul className="space-y-1">
+                                    <td className="table-cell p-4 align-top text-slate-700 dark:text-slate-300 text-sm">
+                                        <ul className="consumed-items-list space-y-1">
                                             {voucher.consumed.map((item: any, i: number) => (
-                                                <li key={i}><strong>{item.quantity} {item.unitAbbr}</strong> {item.productName} <span className="text-slate-500">({item.location})</span></li>
+                                                <li key={i} className="consumed-item"><strong>{item.quantity} {item.unitAbbr}</strong> {item.productName} <span className="item-location text-slate-500 dark:text-slate-400">({item.location})</span></li>
                                             ))}
                                         </ul>
                                     </td>
-                                    <td className="p-4 align-top text-slate-700 text-sm">
-                                         <ul className="space-y-1">
+                                    <td className="table-cell p-4 align-top text-slate-700 dark:text-slate-300 text-sm">
+                                         <ul className="produced-items-list space-y-1">
                                             {voucher.produced.map((item: any, i: number) => (
-                                                <li key={i}><strong>{item.quantity} {item.unitAbbr}</strong> {item.productName} <span className="text-slate-500">({item.location})</span></li>
+                                                <li key={i} className="produced-item"><strong>{item.quantity} {item.unitAbbr}</strong> {item.productName} <span className="item-location text-slate-500 dark:text-slate-400">({item.location})</span></li>
                                             ))}
                                         </ul>
                                     </td>
                                 </tr>
                             ))}
                               {sortedData.length === 0 && (
-                                <tr>
-                                    <td colSpan={4} className="text-center p-8 text-slate-500">
+                                <tr className="empty-row">
+                                    <td colSpan={4} className="empty-message text-center p-8 text-slate-500 dark:text-slate-400">
                                         Henüz üretim fişi oluşturulmamış.
                                     </td>
                                 </tr>
