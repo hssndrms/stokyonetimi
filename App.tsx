@@ -19,6 +19,7 @@ import SettingsMenuPage from './pages/SettingsMenuPage';
 import StockMovementReportPage from './pages/reports/StockMovementReportPage';
 import CurrentStockReportPage from './pages/reports/CurrentStockReportPage';
 import InventoryReportPage from './pages/reports/InventoryReportPage';
+import StockLedgerReportPage from './pages/reports/StockLedgerReportPage';
 import ProductionVouchersPage from './pages/ProductionVouchersPage';
 import SetupPage from './pages/SetupPage';
 
@@ -189,6 +190,8 @@ const App: React.FC = () => {
                 return <CurrentStockReportPage {...{stockItems, products, warehouses, shelves, units, productGroups}} />;
             case 'reports-inventory':
                 return <InventoryReportPage {...{movements: stockMovements, products, units, productGroups, warehouses, warehouseGroups, shelves}} />;
+            case 'reports-stock-ledger':
+                return <StockLedgerReportPage {...{movements: stockMovements, products, units, productGroups, warehouses, shelves, accounts, setModal}} />;
             case 'settings-menu': return <SettingsMenuPage currentStructure={menuStructure} onSave={setMenuStructure} favoriteOrder={favoriteOrder} onFavoriteOrderChange={setFavoriteOrder} />;
             case 'settings-general': return <GeneralSettingsPage settings={generalSettings} onSave={setGeneralSettings} onOpenSetup={() => setForceShowSetup(true)} />;
             default: return <div>Sayfa Bulunamadı</div>;

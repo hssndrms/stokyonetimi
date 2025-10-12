@@ -6,7 +6,7 @@ import { exportToCsv } from '../../utils/csvExporter';
 import { exportToExcel } from '../../utils/excelExporter';
 import SearchableSelect from '../../components/SearchableSelect';
 import { formLabelClass, formInputSmallClass } from '../../styles/common';
-import { DownloadIcon } from '../../components/icons';
+import { DownloadIcon, EraserIcon, ListIcon } from '../../components/icons';
 
 const StockMovementReportPage: React.FC<{
     movements: StockMovement[];
@@ -427,10 +427,10 @@ const StockMovementReportPage: React.FC<{
                         onClick={handleClearFilters}
                         className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300"
                     >
-                        <i className="fa-solid fa-eraser"></i> Filtreleri Temizle
+                        <EraserIcon /> Filtreleri Temizle
                     </button>
                     <button onClick={handleListClick} className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-indigo-600 text-white hover:bg-indigo-700">
-                        <i className="fa-solid fa-list-ul"></i> Listele
+                        <ListIcon /> Listele
                     </button>
                 </div>
             </div>

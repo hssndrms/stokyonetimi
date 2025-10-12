@@ -7,9 +7,15 @@ export interface VersionUpdate {
 
 // Gelecekteki veritabanı güncellemeleri bu diziye eklenecektir.
 export const VERSION_UPDATES: VersionUpdate[] = [
-    {
+{
+  version: '1.3.4',
+  date: '2025-10-12',
+  description: 'Stok Ekstresi raporu eklendi',
+  sql: '--Bu versiyonda çalıştırılması gereken SQL betiği bulunmuyor.'
+},
+{
         version: '1.3.3',
-        date: '2024-07-31',
+        date: '2025-10-12',
         description: 'Üretim fişi fonksiyonları (`process_production_voucher` ve `edit_production_voucher`) içindeki döngü değişkenleri (`consumed_line`, `produced_line`), `JSONB` yerine doğru tip olan `RECORD` olarak deklare edildi ve döngü yapısı `jsonb_to_recordset` kullanacak şekilde güncellendi. Bu, olası bir çalışma zamanı hatasını önler.',
         sql: `
 CREATE OR REPLACE FUNCTION public.process_production_voucher(header_data json, consumed_lines jsonb, produced_lines jsonb)
@@ -138,7 +144,7 @@ $$;`
     },
     {
         version: '1.3.2',
-        date: '2024-07-30',
+        date: '2025-10-12',
         description: 'Üretim fişi fonksiyonları (process_production_voucher ve edit_production_voucher), depo/raf bilgilerini artık her satırdan ayrı ayrı almak yerine fişin başlığından (header_data) alacak şekilde güncellendi. Bu, arayüzdeki değişikliği desteklemektedir.',
         sql: `
 CREATE OR REPLACE FUNCTION public.process_production_voucher(header_data json, consumed_lines jsonb, produced_lines jsonb)
@@ -266,4 +272,4 @@ END;
 $$;
         `
     }
-].sort((a, b) => b.version.localeCompare(a.version, undefined, { numeric: true }));
+ ].sort((a, b) => b.version.localeCompare(a.version, undefined, { numeric: true }));

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Page, MenuItem } from '../types';
+import { APP_VERSION } from '../data/version';
 import { 
     DashboardIcon, BoxIcon, WarehouseIcon, ArrowRightLeftIcon, DocumentChartBarIcon, 
     CubeIcon, UserGroupIcon, TruckIcon, RulerCombinedIcon, TagsIcon, LayerGroupIcon,
     ObjectGroupIcon, SettingsIcon, MenuListIcon, ArrowRightToBracketIcon, ArrowRightFromBracketIcon,
-    SlidersIcon, DollyIcon, IndustryIcon
+    SlidersIcon, DollyIcon, IndustryIcon, FileInvoiceIcon
 } from './icons';
 
 export const ALL_MENU_ITEMS: Record<string, { label: string; icon: React.ReactNode; page: Page | null }> = {
@@ -20,6 +21,7 @@ export const ALL_MENU_ITEMS: Record<string, { label: string; icon: React.ReactNo
     'reports-movements': { label: 'Stok Hareket Raporu', icon: <ArrowRightLeftIcon />, page: 'reports-movements' },
     'reports-stock': { label: 'Mevcut Stok Raporu', icon: <BoxIcon />, page: 'reports-stock' },
     'reports-inventory': { label: 'Envanter Raporu', icon: <CubeIcon />, page: 'reports-inventory' },
+    'reports-stock-ledger': { label: 'Stok Ekstresi', icon: <FileInvoiceIcon />, page: 'reports-stock-ledger' },
     'settings-menu': { label: 'Menü Düzenle', icon: <MenuListIcon />, page: 'settings-menu' },
     'settings-general': { label: 'Genel Ayarlar', icon: <SlidersIcon />, page: 'settings-general' },
     'stock-in': { label: 'Yeni Stok Girişi', icon: <ArrowRightToBracketIcon />, page: null },
@@ -63,6 +65,7 @@ export const DEFAULT_MENU_STRUCTURE: MenuItem[] = [
             { id: 'reports-movements', label: 'Stok Hareket Raporu' },
             { id: 'reports-stock', label: 'Mevcut Stok Raporu' },
             { id: 'reports-inventory', label: 'Envanter Raporu' },
+            { id: 'reports-stock-ledger', label: 'Stok Ekstresi' },
         ]
     },
     {
@@ -199,6 +202,9 @@ const Sidebar: React.FC<{ currentPage: Page; setPage: (page: Page) => void; isOp
                         )}
                     </ul>
                 </nav>
+                <div className="p-4 text-center text-xs text-slate-500 border-t border-slate-700">
+                    Versiyon: {APP_VERSION}
+                </div>
             </div>
         </aside>
     );
