@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Product, StockMovement, Unit, ProductGroup, WarehouseGroup, Warehouse, Shelf } from '../../types';
 import { findById, formatNumber } from '../../utils/helpers';
@@ -8,6 +6,7 @@ import { exportToCsv } from '../../utils/csvExporter';
 import { exportToExcel } from '../../utils/excelExporter';
 import SearchableSelect from '../../components/SearchableSelect';
 import { formLabelClass, formInputSmallClass } from '../../styles/common';
+import { DownloadIcon, EraserIcon, ListIcon } from '../../components/icons';
 
 const InventoryReportPage: React.FC<{
     movements: StockMovement[];
@@ -269,10 +268,10 @@ const InventoryReportPage: React.FC<{
                         onClick={handleClearFilters}
                         className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300"
                     >
-                        <i className="fa-solid fa-eraser"></i> Filtreleri Temizle
+                        <EraserIcon /> Filtreleri Temizle
                     </button>
                     <button onClick={handleListClick} className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-indigo-600 text-white hover:bg-indigo-700">
-                        <i className="fa-solid fa-list-ul"></i> Listele
+                        <ListIcon /> Listele
                     </button>
                 </div>
             </div>
@@ -294,8 +293,10 @@ const InventoryReportPage: React.FC<{
                             onClick={handleExport} 
                             className="font-semibold py-2 px-4 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-600 text-white hover:bg-slate-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
                             disabled={sortedData.length === 0}
+                            title="Dışa Aktar"
+                            aria-label="Dışa Aktar"
                         >
-                            Dışa Aktar
+                            <DownloadIcon />
                         </button>
                     </div>
                 </div>

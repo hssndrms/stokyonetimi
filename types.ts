@@ -104,6 +104,7 @@ export type Page =
   | 'reports-movements'
   | 'reports-stock'
   | 'reports-inventory'
+  | 'reports-stock-ledger'
   | 'settings-menu'
   | 'settings-general';
 
