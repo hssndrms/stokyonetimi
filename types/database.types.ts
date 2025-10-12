@@ -1,4 +1,4 @@
-import { AccountType } from "../types";
+import { AccountType, TransactionType } from "../types";
 
 export type Json =
   | string
@@ -202,6 +202,7 @@ export interface Database {
             warehouse_id: string
             shelf_id: string
             type: "IN" | "OUT"
+            transaction_type: TransactionType
             date: string
             source_or_destination: string
             notes: string | null
@@ -215,6 +216,7 @@ export interface Database {
             warehouse_id: string
             shelf_id: string
             type: "IN" | "OUT"
+            transaction_type?: TransactionType
             date: string
             source_or_destination: string
             notes?: string | null
@@ -227,6 +229,7 @@ export interface Database {
             warehouse_id?: string
             shelf_id?: string
             type?: "IN" | "OUT"
+            transaction_type?: TransactionType
             date?: string
             source_or_destination?: string
             notes?: string | null
@@ -248,6 +251,8 @@ export interface Database {
               stock_out_length: number;
               stock_transfer_prefix: string;
               stock_transfer_length: number;
+              production_prefix: string;
+              production_length: number;
           }
           Insert: {
               id?: number
@@ -261,6 +266,8 @@ export interface Database {
               stock_out_length: number;
               stock_transfer_prefix: string;
               stock_transfer_length: number;
+              production_prefix: string;
+              production_length: number;
           }
           Update: {
               id?: number
@@ -274,6 +281,8 @@ export interface Database {
               stock_out_length?: number;
               stock_transfer_prefix?: string;
               stock_transfer_length?: number;
+              production_prefix?: string;
+              production_length?: number;
           }
           Relationships: []
       }
@@ -291,7 +300,7 @@ export interface Database {
             Returns: string
         },
         get_next_voucher_number: {
-            Args: { p_type: 'IN' | 'OUT' | 'TRANSFER' },
+            Args: { p_type: 'IN' | 'OUT' | 'TRANSFER' | 'PRODUCTION' },
             Returns: string
         },
         stock_in: {
@@ -312,6 +321,14 @@ export interface Database {
         },
         edit_stock_transfer: {
             Args: { p_voucher_number: string, header_data: Json, lines_data: Json[] },
+            Returns: undefined
+        },
+        process_production_voucher: {
+            Args: { header_data: Json, consumed_lines: Json[], produced_lines: Json[] },
+            Returns: undefined
+        },
+        edit_production_voucher: {
+            Args: { p_voucher_number: string, header_data: Json, consumed_lines: Json[], produced_lines: Json[] },
             Returns: undefined
         },
         delete_stock_voucher: {

@@ -1,10 +1,11 @@
-
 export const SETUP_SQL = `
--- Stok Takip Uygulaması Kurulum Betiği v1.2.0
+-- Stok Takip Uygulaması Kurulum Betiği v1.3.3
 -- Bu betik, uygulamanın ihtiyaç duyduğu tüm tabloları, fonksiyonları ve güvenlik kurallarını oluşturur.
 -- Supabase projenizdeki SQL Editor'e yapıştırıp çalıştırın.
 
 -- Önceki objeleri temizle (isteğe bağlı, temiz kurulum için)
+DROP FUNCTION IF EXISTS public.edit_production_voucher(text,json,jsonb,jsonb);
+DROP FUNCTION IF EXISTS public.process_production_voucher(json,jsonb,jsonb);
 DROP FUNCTION IF EXISTS public.edit_stock_transfer(text,json,jsonb);
 DROP FUNCTION IF EXISTS public.edit_stock_voucher(text,json,jsonb);
 DROP FUNCTION IF EXISTS public.delete_stock_voucher(text);
@@ -121,7 +122,7 @@ CREATE UNIQUE INDEX stock_items_shelf_unique ON public.stock_items (product_id, 
 CREATE UNIQUE INDEX stock_items_warehouse_unique ON public.stock_items (product_id, warehouse_id) WHERE shelf_id IS NULL;
 
 
--- stock_movements (Stok Hareketleri) - Rafsız depo desteği eklendi
+-- stock_movements (Stok Hareketleri) - Rafsız depo desteği ve işlem tipi eklendi
 CREATE TABLE public.stock_movements (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     voucher_number TEXT NOT NULL,
@@ -130,6 +131,7 @@ CREATE TABLE public.stock_movements (
     warehouse_id UUID NOT NULL REFERENCES public.warehouses(id) ON DELETE RESTRICT,
     shelf_id UUID NULL REFERENCES public.shelves(id) ON DELETE RESTRICT, -- NULL olabilir
     type TEXT NOT NULL CHECK (type IN ('IN', 'OUT')),
+    transaction_type TEXT NOT NULL DEFAULT 'STANDARD' CHECK (transaction_type IN ('STANDARD', 'TRANSFER', 'PRODUCTION')),
     date DATE NOT NULL,
     source_or_destination TEXT NOT NULL,
     notes TEXT,
@@ -153,7 +155,9 @@ CREATE TABLE public.general_settings (
     stock_out_prefix TEXT NOT NULL,
     stock_out_length INT NOT NULL,
     stock_transfer_prefix TEXT NOT NULL,
-    stock_transfer_length INT NOT NULL
+    stock_transfer_length INT NOT NULL,
+    production_prefix TEXT NOT NULL,
+    production_length INT NOT NULL
 );
 
 -- 2. GÜNCELLEME TRIGGER'LARINI OLUŞTURMA
@@ -168,8 +172,8 @@ FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 
 -- 3. VARSAYILAN AYARLARI EKLEME
 -- =============================================
-INSERT INTO public.general_settings (id, customer_code_prefix, customer_code_length, supplier_code_prefix, supplier_code_length, stock_in_prefix, stock_in_length, stock_out_prefix, stock_out_length, stock_transfer_prefix, stock_transfer_length)
-VALUES (1, 'M', 5, 'T', 5, 'G', 8, 'C', 8, 'TR', 8) ON CONFLICT(id) DO NOTHING;
+INSERT INTO public.general_settings (id, customer_code_prefix, customer_code_length, supplier_code_prefix, supplier_code_length, stock_in_prefix, stock_in_length, stock_out_prefix, stock_out_length, stock_transfer_prefix, stock_transfer_length, production_prefix, production_length)
+VALUES (1, 'M', 5, 'T', 5, 'G', 8, 'C', 8, 'TR', 8, 'URT', 8) ON CONFLICT(id) DO NOTHING;
 
 
 -- 4. GÜVENLİK (ROW LEVEL SECURITY) KURALLARINI OLUŞTURMA
@@ -222,11 +226,13 @@ BEGIN
             WHEN p_type = 'IN' THEN stock_in_prefix
             WHEN p_type = 'OUT' THEN stock_out_prefix
             WHEN p_type = 'TRANSFER' THEN stock_transfer_prefix
+            WHEN p_type = 'PRODUCTION' THEN production_prefix
         END,
         CASE 
             WHEN p_type = 'IN' THEN stock_in_length
             WHEN p_type = 'OUT' THEN stock_out_length
             WHEN p_type = 'TRANSFER' THEN stock_transfer_length
+            WHEN p_type = 'PRODUCTION' THEN production_length
         END
     INTO prefix, len
     FROM public.general_settings WHERE id = 1;
@@ -299,7 +305,7 @@ END;
 $$;
 
 
--- Stok hareketlerini işleyen ana fonksiyon (v1.1.0)
+-- Stok hareketlerini işleyen ana fonksiyon
 CREATE OR REPLACE FUNCTION public.process_stock_movement(
     p_product_id uuid,
     p_warehouse_id uuid,
@@ -356,7 +362,7 @@ BEGIN
     
     FOR line IN SELECT * FROM jsonb_array_elements(lines_data)
     LOOP
-        INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes)
+        INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes, transaction_type)
         VALUES (
             voucher_num,
             (line->>'product_id')::uuid,
@@ -366,7 +372,8 @@ BEGIN
             'IN',
             (header_data->>'date')::date,
             header_data->>'source_or_destination',
-            header_data->>'notes'
+            header_data->>'notes',
+            'STANDARD'
         );
 
         PERFORM public.process_stock_movement(
@@ -391,7 +398,7 @@ BEGIN
     
     FOR line IN SELECT * FROM jsonb_array_elements(lines_data)
     LOOP
-        INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes)
+        INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes, transaction_type)
         VALUES (
             voucher_num,
             (line->>'product_id')::uuid,
@@ -401,7 +408,8 @@ BEGIN
             'OUT',
             (header_data->>'date')::date,
             header_data->>'source_or_destination',
-            header_data->>'notes'
+            header_data->>'notes',
+            'STANDARD'
         );
 
         PERFORM public.process_stock_movement(
@@ -428,7 +436,7 @@ BEGIN
     FOR line IN SELECT * FROM jsonb_array_elements(lines_data)
     LOOP
         -- Çıkış hareketi
-        INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes)
+        INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes, transaction_type)
         VALUES (
             voucher_num,
             (line->>'product_id')::uuid,
@@ -438,12 +446,13 @@ BEGIN
             'OUT',
             (header_data->>'date')::date,
             'Transfer',
-            header_data->>'notes'
+            header_data->>'notes',
+            'TRANSFER'
         );
         PERFORM public.process_stock_movement((line->>'product_id')::uuid, (header_data->>'source_warehouse_id')::uuid, (header_data->>'source_shelf_id')::uuid, (line->>'quantity')::numeric, 'OUT');
 
         -- Giriş hareketi
-        INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes)
+        INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes, transaction_type)
         VALUES (
             voucher_num,
             (line->>'product_id')::uuid,
@@ -453,7 +462,8 @@ BEGIN
             'IN',
             (header_data->>'date')::date,
             'Transfer',
-            header_data->>'notes'
+            header_data->>'notes',
+            'TRANSFER'
         );
         PERFORM public.process_stock_movement((line->>'product_id')::uuid, (header_data->>'dest_warehouse_id')::uuid, (header_data->>'dest_shelf_id')::uuid, (line->>'quantity')::numeric, 'IN');
     END LOOP;
@@ -461,7 +471,7 @@ END;
 $$;
 
 
--- Fiş silme (ve düzenleme sırasında geri alma) fonksiyonu (v1.1.0)
+-- Fiş silme (ve düzenleme sırasında geri alma) fonksiyonu
 CREATE OR REPLACE FUNCTION public.delete_stock_voucher(p_voucher_number text)
 RETURNS void LANGUAGE plpgsql AS $$
 DECLARE
@@ -510,148 +520,197 @@ END;
 $$;
 
 
--- Stok Giriş/Çıkış Fişi Düzenleme Fonksiyonu (v1.2.0)
+-- Stok Giriş/Çıkış Fişi Düzenleme Fonksiyonu
 CREATE OR REPLACE FUNCTION public.edit_stock_voucher(p_voucher_number text, header_data json, lines_data jsonb)
 RETURNS void LANGUAGE plpgsql AS $$
 DECLARE
     line JSONB;
     movement_type TEXT;
-    old_movements_summary JSONB;
-    new_movements_summary JSONB;
-    material_change BOOLEAN;
-    old_header RECORD;
 BEGIN
-    -- 1. Eski hareketlerin bir özetini al (ürün ve miktar)
-    SELECT jsonb_agg(jsonb_build_object('product_id', product_id, 'quantity', quantity) ORDER BY product_id)
-    INTO old_movements_summary
-    FROM public.stock_movements
-    WHERE voucher_number = p_voucher_number;
+    -- Eski hareketleri ve stok etkilerini geri al
+    PERFORM public.delete_stock_voucher(p_voucher_number);
 
-    -- 2. Gelen yeni satırların bir özetini oluştur
-    SELECT jsonb_agg(jsonb_build_object('product_id', (l->>'product_id')::uuid, 'quantity', (l->>'quantity')::numeric) ORDER BY (l->>'product_id'))
-    INTO new_movements_summary
-    FROM jsonb_array_elements(lines_data) as l;
-    
-    -- 3. Eski başlık bilgilerini al ve karşılaştır
-    SELECT warehouse_id, shelf_id, type
-    INTO old_header
-    FROM public.stock_movements 
-    WHERE voucher_number = p_voucher_number LIMIT 1;
-    
-    material_change := NOT (
-        old_movements_summary IS NOT DISTINCT FROM new_movements_summary AND
-        old_header.warehouse_id = (header_data->>'warehouse_id')::uuid AND
-        old_header.shelf_id IS NOT DISTINCT FROM (header_data->>'shelf_id')::uuid AND
-        old_header.type = (header_data->>'type')::text
-    );
-
-    -- 4. Değişikliğin türüne göre işlem yap
-    IF material_change THEN
-        -- Miktarı veya konumu etkileyen bir değişiklik var: Eski hareketleri sil ve yenilerini oluştur
-        PERFORM public.delete_stock_voucher(p_voucher_number);
-
-        movement_type := header_data->>'type';
-        IF movement_type IS NULL OR (movement_type <> 'IN' AND movement_type <> 'OUT') THEN
-            RAISE EXCEPTION 'Geçersiz hareket tipi: %', movement_type;
-        END IF;
-
-        -- Yeni hareketleri ekle
-        FOR line IN SELECT * FROM jsonb_array_elements(lines_data)
-        LOOP
-            INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes)
-            VALUES (
-                p_voucher_number,
-                (line->>'product_id')::uuid,
-                (line->>'quantity')::numeric,
-                (header_data->>'warehouse_id')::uuid,
-                (header_data->>'shelf_id')::uuid,
-                movement_type,
-                (header_data->>'date')::date,
-                header_data->>'source_or_destination',
-                header_data->>'notes'
-            );
-
-            PERFORM public.process_stock_movement(
-                (line->>'product_id')::uuid,
-                (header_data->>'warehouse_id')::uuid,
-                (header_data->>'shelf_id')::uuid,
-                (line->>'quantity')::numeric,
-                movement_type
-            );
-        END LOOP;
-    ELSE
-        -- Sadece başlık bilgileri (tarih, not vb.) değişti: Sadece güncelle, stok işlemi yapma
-        UPDATE public.stock_movements
-        SET 
-            date = (header_data->>'date')::date,
-            source_or_destination = header_data->>'source_or_destination',
-            notes = header_data->>'notes'
-        WHERE voucher_number = p_voucher_number;
+    movement_type := header_data->>'type';
+    IF movement_type IS NULL OR (movement_type <> 'IN' AND movement_type <> 'OUT') THEN
+        RAISE EXCEPTION 'Geçersiz hareket tipi: %', movement_type;
     END IF;
+
+    -- Yeni hareketleri ekle
+    FOR line IN SELECT * FROM jsonb_array_elements(lines_data)
+    LOOP
+        INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes, transaction_type)
+        VALUES (
+            p_voucher_number,
+            (line->>'product_id')::uuid,
+            (line->>'quantity')::numeric,
+            (header_data->>'warehouse_id')::uuid,
+            (header_data->>'shelf_id')::uuid,
+            movement_type,
+            (header_data->>'date')::date,
+            header_data->>'source_or_destination',
+            header_data->>'notes',
+            'STANDARD'
+        );
+
+        PERFORM public.process_stock_movement(
+            (line->>'product_id')::uuid,
+            (header_data->>'warehouse_id')::uuid,
+            (header_data->>'shelf_id')::uuid,
+            (line->>'quantity')::numeric,
+            movement_type
+        );
+    END LOOP;
 END;
 $$;
 
 
--- Stok Transfer Fişi Düzenleme Fonksiyonu (v1.2.0)
+-- Stok Transfer Fişi Düzenleme Fonksiyonu
 CREATE OR REPLACE FUNCTION public.edit_stock_transfer(p_voucher_number text, header_data json, lines_data jsonb)
 RETURNS void LANGUAGE plpgsql AS $$
 DECLARE
     line JSONB;
-    old_lines_summary JSONB;
-    new_lines_summary JSONB;
-    material_change BOOLEAN;
-    old_out_header RECORD;
-    old_in_header RECORD;
 BEGIN
-    -- 1. Eski hareketlerin bir özetini al
-    SELECT jsonb_agg(jsonb_build_object('product_id', product_id, 'quantity', quantity) ORDER BY product_id)
-    INTO old_lines_summary
-    FROM public.stock_movements
-    WHERE voucher_number = p_voucher_number AND type = 'OUT';
+    -- Eski hareketleri ve stok etkilerini geri al
+    PERFORM public.delete_stock_voucher(p_voucher_number);
 
-    -- 2. Gelen yeni satırların bir özetini oluştur
-    SELECT jsonb_agg(jsonb_build_object('product_id', (l->>'product_id')::uuid, 'quantity', (l->>'quantity')::numeric) ORDER BY (l->>'product_id'))
-    INTO new_lines_summary
-    FROM jsonb_array_elements(lines_data) as l;
+    -- Yeni hareketleri ekle
+    FOR line IN SELECT * FROM jsonb_array_elements(lines_data)
+    LOOP
+        -- Çıkış
+        INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes, transaction_type)
+        VALUES (p_voucher_number, (line->>'product_id')::uuid, (line->>'quantity')::numeric, (header_data->>'source_warehouse_id')::uuid, (header_data->>'source_shelf_id')::uuid, 'OUT', (header_data->>'date')::date, 'Transfer', header_data->>'notes', 'TRANSFER');
+        PERFORM public.process_stock_movement((line->>'product_id')::uuid, (header_data->>'source_warehouse_id')::uuid, (header_data->>'source_shelf_id')::uuid, (line->>'quantity')::numeric, 'OUT');
 
-    -- 3. Eski başlık bilgilerini al ve karşılaştır
-    SELECT warehouse_id, shelf_id INTO old_out_header FROM public.stock_movements WHERE voucher_number = p_voucher_number AND type = 'OUT' LIMIT 1;
-    SELECT warehouse_id, shelf_id INTO old_in_header FROM public.stock_movements WHERE voucher_number = p_voucher_number AND type = 'IN' LIMIT 1;
+        -- Giriş
+        INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes, transaction_type)
+        VALUES (p_voucher_number, (line->>'product_id')::uuid, (line->>'quantity')::numeric, (header_data->>'dest_warehouse_id')::uuid, (header_data->>'dest_shelf_id')::uuid, 'IN', (header_data->>'date')::date, 'Transfer', header_data->>'notes', 'TRANSFER');
+        PERFORM public.process_stock_movement((line->>'product_id')::uuid, (header_data->>'dest_warehouse_id')::uuid, (header_data->>'dest_shelf_id')::uuid, (line->>'quantity')::numeric, 'IN');
+    END LOOP;
+END;
+$$;
 
-    material_change := NOT (
-        old_lines_summary IS NOT DISTINCT FROM new_lines_summary AND
-        old_out_header.warehouse_id = (header_data->>'source_warehouse_id')::uuid AND
-        old_out_header.shelf_id IS NOT DISTINCT FROM (header_data->>'source_shelf_id')::uuid AND
-        old_in_header.warehouse_id = (header_data->>'dest_warehouse_id')::uuid AND
-        old_in_header.shelf_id IS NOT DISTINCT FROM (header_data->>'dest_shelf_id')::uuid
-    );
+-- Üretim Fişi Fonksiyonu
+CREATE OR REPLACE FUNCTION public.process_production_voucher(header_data json, consumed_lines jsonb, produced_lines jsonb)
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+    voucher_num TEXT;
+    consumed_line RECORD;
+    produced_line RECORD;
+BEGIN
+    voucher_num := public.get_next_voucher_number('PRODUCTION');
     
-    -- 4. Değişikliğin türüne göre işlem yap
-    IF material_change THEN
-        -- Miktarı veya konumu etkileyen bir değişiklik var: Eski hareketleri sil ve yenilerini oluştur
-        PERFORM public.delete_stock_voucher(p_voucher_number);
+    -- Tüketilen malzemeleri stoktan düş
+    FOR consumed_line IN SELECT * FROM jsonb_to_recordset(consumed_lines) as x(product_id uuid, quantity numeric)
+    LOOP
+        INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes, transaction_type)
+        VALUES (
+            voucher_num,
+            consumed_line.product_id,
+            consumed_line.quantity,
+            (header_data->>'source_warehouse_id')::uuid,
+            (header_data->>'source_shelf_id')::uuid,
+            'OUT',
+            (header_data->>'date')::date,
+            'Üretim Sarf',
+            header_data->>'notes',
+            'PRODUCTION'
+        );
+        PERFORM public.process_stock_movement(
+            consumed_line.product_id, 
+            (header_data->>'source_warehouse_id')::uuid, 
+            (header_data->>'source_shelf_id')::uuid, 
+            consumed_line.quantity, 
+            'OUT'
+        );
+    END LOOP;
 
-        -- Yeni hareketleri ekle
-        FOR line IN SELECT * FROM jsonb_array_elements(lines_data)
-        LOOP
-            -- Çıkış
-            INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes)
-            VALUES (p_voucher_number, (line->>'product_id')::uuid, (line->>'quantity')::numeric, (header_data->>'source_warehouse_id')::uuid, (header_data->>'source_shelf_id')::uuid, 'OUT', (header_data->>'date')::date, 'Transfer', header_data->>'notes');
-            PERFORM public.process_stock_movement((line->>'product_id')::uuid, (header_data->>'source_warehouse_id')::uuid, (header_data->>'source_shelf_id')::uuid, (line->>'quantity')::numeric, 'OUT');
+    -- Üretilen ürünleri stoğa ekle
+    FOR produced_line IN SELECT * FROM jsonb_to_recordset(produced_lines) as x(product_id uuid, quantity numeric)
+    LOOP
+        INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes, transaction_type)
+        VALUES (
+            voucher_num,
+            produced_line.product_id,
+            produced_line.quantity,
+            (header_data->>'dest_warehouse_id')::uuid,
+            (header_data->>'dest_shelf_id')::uuid,
+            'IN',
+            (header_data->>'date')::date,
+            'Üretimden Giriş',
+            header_data->>'notes',
+            'PRODUCTION'
+        );
+        PERFORM public.process_stock_movement(
+            produced_line.product_id, 
+            (header_data->>'dest_warehouse_id')::uuid, 
+            (header_data->>'dest_shelf_id')::uuid, 
+            produced_line.quantity, 
+            'IN'
+        );
+    END LOOP;
+END;
+$$;
 
-            -- Giriş
-            INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes)
-            VALUES (p_voucher_number, (line->>'product_id')::uuid, (line->>'quantity')::numeric, (header_data->>'dest_warehouse_id')::uuid, (header_data->>'dest_shelf_id')::uuid, 'IN', (header_data->>'date')::date, 'Transfer', header_data->>'notes');
-            PERFORM public.process_stock_movement((line->>'product_id')::uuid, (header_data->>'dest_warehouse_id')::uuid, (header_data->>'dest_shelf_id')::uuid, (line->>'quantity')::numeric, 'IN');
-        END LOOP;
-    ELSE
-        -- Sadece başlık bilgileri (tarih, not vb.) değişti: Sadece güncelle, stok işlemi yapma
-        UPDATE public.stock_movements
-        SET 
-            date = (header_data->>'date')::date,
-            notes = header_data->>'notes'
-        WHERE voucher_number = p_voucher_number;
-    END IF;
+-- Üretim Fişi Düzenleme Fonksiyonu
+CREATE OR REPLACE FUNCTION public.edit_production_voucher(p_voucher_number text, header_data json, consumed_lines jsonb, produced_lines jsonb)
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+    consumed_line RECORD;
+    produced_line RECORD;
+BEGIN
+    -- Eski hareketleri ve stok etkilerini geri al
+    PERFORM public.delete_stock_voucher(p_voucher_number);
+
+    -- Yeni hareketleri ekle (var olan fiş numarası ile)
+    -- Tüketilen
+    FOR consumed_line IN SELECT * FROM jsonb_to_recordset(consumed_lines) as x(product_id uuid, quantity numeric)
+    LOOP
+        INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes, transaction_type)
+        VALUES (
+            p_voucher_number, 
+            consumed_line.product_id, 
+            consumed_line.quantity, 
+            (header_data->>'source_warehouse_id')::uuid, 
+            (header_data->>'source_shelf_id')::uuid, 
+            'OUT', 
+            (header_data->>'date')::date, 
+            'Üretim Sarf', 
+            header_data->>'notes', 
+            'PRODUCTION'
+        );
+        PERFORM public.process_stock_movement(
+            consumed_line.product_id, 
+            (header_data->>'source_warehouse_id')::uuid, 
+            (header_data->>'source_shelf_id')::uuid, 
+            consumed_line.quantity, 
+            'OUT'
+        );
+    END LOOP;
+
+    -- Üretilen
+    FOR produced_line IN SELECT * FROM jsonb_to_recordset(produced_lines) as x(product_id uuid, quantity numeric)
+    LOOP
+        INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes, transaction_type)
+        VALUES (
+            p_voucher_number, 
+            produced_line.product_id, 
+            produced_line.quantity, 
+            (header_data->>'dest_warehouse_id')::uuid, 
+            (header_data->>'dest_shelf_id')::uuid, 
+            'IN', 
+            (header_data->>'date')::date, 
+            'Üretimden Giriş', 
+            header_data->>'notes', 
+            'PRODUCTION'
+        );
+        PERFORM public.process_stock_movement(
+            produced_line.product_id, 
+            (header_data->>'dest_warehouse_id')::uuid, 
+            (header_data->>'dest_shelf_id')::uuid, 
+            produced_line.quantity, 
+            'IN'
+        );
+    END LOOP;
 END;
 $$;
 `;

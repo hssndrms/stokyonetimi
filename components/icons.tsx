@@ -19,6 +19,7 @@ export const MenuListIcon = () => <i className="fa-solid fa-list-check fa-fw"></
 export const EyeIcon = () => <i className="fa-solid fa-eye fa-fw"></i>;
 export const EyeSlashIcon = () => <i className="fa-solid fa-eye-slash fa-fw"></i>;
 export const DollyIcon = () => <i className="fa-solid fa-dolly fa-fw"></i>;
+export const IndustryIcon = () => <i className="fa-solid fa-industry fa-fw"></i>;
 
 
 // Action Icons
@@ -33,3 +34,4 @@ export const TruckRampBoxIcon = () => <i className="fa-solid fa-truck-ramp-box">
 export const MagicWandIcon = () => <i className="fa-solid fa-wand-magic-sparkles"></i>;
 export const StarIcon = () => <i className="fa-solid fa-star fa-fw"></i>;
 export const StarOutlineIcon = () => <i className="fa-regular fa-star fa-fw"></i>;
+export const DownloadIcon = () => <i className="fa-solid fa-download fa-fw"></i>;

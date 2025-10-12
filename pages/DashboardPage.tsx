@@ -1,9 +1,8 @@
 
-
 import React, { useMemo, useState } from 'react';
 import { Product, StockMovement, ModalState, StockItem, ProductGroup } from '../types';
 import { findById, formatNumber } from '../utils/helpers';
-import { ArrowRightToBracketIcon, ArrowRightFromBracketIcon, CubeIcon, UserPlusIcon, DollyIcon } from '../components/icons';
+import { ArrowRightToBracketIcon, ArrowRightFromBracketIcon, CubeIcon, UserPlusIcon, DollyIcon, IndustryIcon } from '../components/icons';
 
 const DashboardPage: React.FC<{
     products: Product[];
@@ -106,6 +105,9 @@ const DashboardPage: React.FC<{
                 </button>
                 <button onClick={() => setModal({ type: 'STOCK_TRANSFER' })} className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-orange-600 text-white hover:bg-orange-700">
                     <DollyIcon /> Yeni Transfer Hareketi
+                </button>
+                <button onClick={() => setModal({ type: 'ADD_PRODUCTION_VOUCHER' })} className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-purple-600 text-white hover:bg-purple-700">
+                    <IndustryIcon /> Yeni Üretim Fişi
                 </button>
                 <button onClick={() => setModal({ type: 'ADD_PRODUCT' })} className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-sky-600 text-white hover:bg-sky-700">
                     <CubeIcon /> Yeni Ürün Ekle

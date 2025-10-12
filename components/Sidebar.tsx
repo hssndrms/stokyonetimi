@@ -1,12 +1,10 @@
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Page, MenuItem } from '../types';
 import { 
     DashboardIcon, BoxIcon, WarehouseIcon, ArrowRightLeftIcon, DocumentChartBarIcon, 
     CubeIcon, UserGroupIcon, TruckIcon, RulerCombinedIcon, TagsIcon, LayerGroupIcon,
     ObjectGroupIcon, SettingsIcon, MenuListIcon, ArrowRightToBracketIcon, ArrowRightFromBracketIcon,
-    SlidersIcon, DollyIcon
+    SlidersIcon, DollyIcon, IndustryIcon
 } from './icons';
 
 export const ALL_MENU_ITEMS: Record<string, { label: string; icon: React.ReactNode; page: Page | null }> = {
@@ -18,6 +16,7 @@ export const ALL_MENU_ITEMS: Record<string, { label: string; icon: React.ReactNo
     'product-groups': { label: 'Ürün Grupları', icon: <LayerGroupIcon />, page: 'product-groups' },
     'units': { label: 'Birimler', icon: <RulerCombinedIcon />, page: 'units' },
     'accounts': { label: 'Cariler', icon: <UserGroupIcon />, page: 'accounts' },
+    'production-vouchers': { label: 'Üretim Fişleri', icon: <IndustryIcon />, page: 'production-vouchers' },
     'reports-movements': { label: 'Stok Hareket Raporu', icon: <ArrowRightLeftIcon />, page: 'reports-movements' },
     'reports-stock': { label: 'Mevcut Stok Raporu', icon: <BoxIcon />, page: 'reports-stock' },
     'reports-inventory': { label: 'Envanter Raporu', icon: <CubeIcon />, page: 'reports-inventory' },
@@ -26,11 +25,19 @@ export const ALL_MENU_ITEMS: Record<string, { label: string; icon: React.ReactNo
     'stock-in': { label: 'Yeni Stok Girişi', icon: <ArrowRightToBracketIcon />, page: null },
     'stock-out': { label: 'Yeni Stok Çıkışı', icon: <ArrowRightFromBracketIcon />, page: null },
     'stock-transfer': { label: 'Yeni Transfer', icon: <DollyIcon />, page: null },
+    'add-production-voucher': { label: 'Yeni Üretim Fişi', icon: <IndustryIcon />, page: null },
 };
 
 export const DEFAULT_MENU_STRUCTURE: MenuItem[] = [
     { id: 'dashboard', label: 'Anasayfa' },
     { id: 'stock', label: 'Stok Durumu' },
+    {
+        id: 'production',
+        label: 'Üretim',
+        children: [
+            { id: 'production-vouchers', label: 'Üretim Fişleri' },
+        ]
+    },
     {
         id: 'definitions',
         label: 'Tanımlar',
@@ -73,6 +80,7 @@ export const DEFAULT_MENU_STRUCTURE: MenuItem[] = [
             { id: 'stock-in', label: 'Yeni Stok Girişi' },
             { id: 'stock-out', label: 'Yeni Stok Çıkışı' },
             { id: 'stock-transfer', label: 'Yeni Transfer' },
+            { id: 'add-production-voucher', label: 'Yeni Üretim Fişi' },
         ],
         hidden: true,
     }
@@ -84,6 +92,7 @@ export const getGroupIcon = (id: string): React.ReactNode => {
         case 'card-groups': return <ObjectGroupIcon />;
         case 'reports': return <DocumentChartBarIcon />;
         case 'settings': return <SettingsIcon />;
+        case 'production': return <IndustryIcon />;
         case 'quick-actions': return <i className="fa-solid fa-bolt fa-fw"></i>;
         default: return <LayerGroupIcon />;
     }
