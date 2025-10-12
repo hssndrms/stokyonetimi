@@ -214,61 +214,63 @@ const CurrentStockReportPage: React.FC<{
     const title = "Mevcut Stok Raporu";
 
     return (
-        <div>
-            <h1 className="text-3xl font-bold text-slate-800 mb-6">{title}</h1>
+        <div id="current-stock-report-page">
+            <h1 className="page-title text-3xl font-bold text-slate-800 dark:text-slate-100 mb-6">{title}</h1>
 
-            <div className="bg-white p-4 rounded-lg shadow border mb-6">
+            <div id="report-filters" className="filter-panel bg-white dark:bg-slate-800 p-4 rounded-lg shadow border dark:border-slate-700 mb-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div>
+                    <div className="filter-group">
                         <label className={formLabelClass}>Depo</label>
                         <SearchableSelect options={warehouses} value={filters.warehouseId} onChange={(val) => handleFilterChange('warehouseId', val)} placeholder="Depo Seçin"/>
                     </div>
-                    <div>
+                    <div className="filter-group">
                         <label className={formLabelClass}>Raf</label>
                         <SearchableSelect options={availableShelves} value={filters.shelfId} onChange={(val) => handleFilterChange('shelfId', val)} placeholder="Raf Seçin" disabled={!filters.warehouseId} />
                     </div>
-                    <div>
+                    <div className="filter-group">
                         <label className={formLabelClass}>Ürün Grubu</label>
                          <SearchableSelect options={productGroups} value={filters.productGroupId} onChange={(val) => handleFilterChange('productGroupId', val)} placeholder="Grup Seçin"/>
                     </div>
-                    <div>
+                    <div className="filter-group">
                         <label className={formLabelClass}>Ürün</label>
                          <SearchableSelect options={availableProducts} value={filters.productId} onChange={(val) => handleFilterChange('productId', val)} placeholder="Ürün Seçin"/>
                     </div>
                 </div>
-                <div className="flex justify-between items-center mt-4 pt-4 border-t">
+                <div className="flex justify-between items-center mt-4 pt-4 border-t dark:border-slate-700">
                     <div className="flex items-center">
                         <input
                             type="checkbox"
-                            id="hideZeroStock"
+                            id="hide-zero-stock-checkbox"
                             checked={hideZeroStock}
                             onChange={(e) => setHideZeroStock(e.target.checked)}
-                            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-slate-900"
                         />
-                        <label htmlFor="hideZeroStock" className="ml-2 text-sm font-medium text-slate-700">
+                        <label htmlFor="hide-zero-stock-checkbox" className="ml-2 text-sm font-medium text-slate-700 dark:text-slate-300">
                             Stoğu olmayanları gizle
                         </label>
                     </div>
                      <div className="flex gap-2">
                         <button
+                            id="clear-filters-button"
                             type="button"
                             onClick={handleClearFilters}
-                            className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300"
+                            className="secondary-action-button font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500"
                         >
                             <EraserIcon /> Filtreleri Temizle
                         </button>
-                        <button onClick={handleListClick} className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-indigo-600 text-white hover:bg-indigo-700">
+                        <button id="run-report-button" onClick={handleListClick} className="primary-action-button font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-400">
                             <ListIcon /> Listele
                         </button>
                     </div>
                 </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow border overflow-hidden">
-                <div className="p-4 flex justify-between items-center border-b">
-                    <h3 className="text-lg font-bold">Rapor Sonuçları</h3>
+            <div id="report-results" className="results-container bg-white dark:bg-slate-800 rounded-lg shadow border dark:border-slate-700 overflow-hidden">
+                <div className="p-4 flex justify-between items-center border-b dark:border-slate-700">
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Rapor Sonuçları</h3>
                     <div className="flex items-center gap-4">
                         <select 
+                            id="export-format-select"
                             value={exportFormat} 
                             onChange={e => setExportFormat(e.target.value as 'excel' | 'csv')} 
                             className={formInputSmallClass}
@@ -278,8 +280,9 @@ const CurrentStockReportPage: React.FC<{
                             <option value="csv">CSV'e Aktar</option>
                         </select>
                         <button 
+                            id="export-button"
                             onClick={handleExport} 
-                            className="font-semibold py-2 px-4 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-600 text-white hover:bg-slate-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                            className="secondary-action-button font-semibold py-2 px-4 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-600 text-white hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-500 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed"
                             disabled={sortedData.length === 0}
                             title="Dışa Aktar"
                             aria-label="Dışa Aktar"
@@ -290,12 +293,12 @@ const CurrentStockReportPage: React.FC<{
                 </div>
                 {displayedData.length > 0 ? (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead>
-                                <tr className="border-b bg-slate-50">
+                        <table id="results-table" className="data-table w-full text-left">
+                            <thead className="table-header">
+                                <tr className="border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
                                     {headers.map(header => (
-                                        <th key={header} className="p-4 text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                            <button onClick={() => requestSort(header)} className="w-full text-left flex items-center gap-1 hover:text-slate-800">
+                                        <th key={header} className="table-header-cell p-4 text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                                            <button onClick={() => requestSort(header)} className="sort-button w-full text-left flex items-center gap-1 hover:text-slate-800 dark:hover:text-slate-100">
                                                 {header}
                                                 {sortConfig?.key === header ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : null}
                                             </button>
@@ -303,11 +306,11 @@ const CurrentStockReportPage: React.FC<{
                                     ))}
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="table-body">
                                 {sortedData.map((row, rowIndex) => (
-                                    <tr key={rowIndex} className="border-b hover:bg-slate-50">
+                                    <tr key={rowIndex} className="table-row border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
                                         {Object.values(row).map((cell: any, cellIndex) => (
-                                            <td key={cellIndex} className="p-4 align-middle text-slate-700">{cell}</td>
+                                            <td key={cellIndex} className="table-cell p-4 align-middle text-slate-700 dark:text-slate-300">{cell}</td>
                                         ))}
                                     </tr>
                                 ))}
@@ -315,7 +318,7 @@ const CurrentStockReportPage: React.FC<{
                         </table>
                     </div>
                 ) : (
-                    <div className="p-8 text-center text-slate-500">
+                    <div className="empty-message p-8 text-center text-slate-500 dark:text-slate-400">
                         Raporu görüntülemek için lütfen filtreleri seçip "Listele" butonuna tıklayın.
                     </div>
                 )}

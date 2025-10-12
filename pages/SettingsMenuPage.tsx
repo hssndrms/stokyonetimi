@@ -101,7 +101,7 @@ const MenuItemComponent: React.FC<{
     const isHidden = !!item.hidden;
 
     return (
-        <div data-path={path.join('-')} className={isHidden ? 'opacity-50' : ''}>
+        <div data-path={path.join('-')} className={`menu-editor-item-wrapper ${isHidden ? 'opacity-50' : ''}`}>
             {showDropIndicator('before') && <div className="drop-indicator"></div>}
             <div
                 draggable
@@ -110,32 +110,32 @@ const MenuItemComponent: React.FC<{
                 onDrop={(e) => onDrop(e, path)}
                 onDragEnd={onDragEnd}
                 onDragLeave={onDragLeave}
-                className={`draggable-item flex items-center gap-3 p-3 mb-2 rounded-md transition-colors font-medium text-sm border ${isGroup ? 'bg-slate-100' : 'bg-white'}`}
+                className={`menu-editor-item draggable-item flex items-center gap-3 p-3 mb-2 rounded-md transition-colors font-medium text-sm border dark:border-slate-700 ${isGroup ? 'bg-slate-100 dark:bg-slate-700' : 'bg-white dark:bg-slate-600'}`}
             >
-                <div className="flex items-center gap-3 flex-grow">
-                    {isGroup ? getGroupIcon(item.id) : itemInfo?.icon}
+                <div className="flex items-center gap-3 flex-grow text-slate-800 dark:text-slate-200">
+                    <span className="text-slate-600 dark:text-slate-300">{isGroup ? getGroupIcon(item.id) : itemInfo?.icon}</span>
                     <span>{isGroup ? item.label : (itemInfo?.label || item.label)}</span>
                 </div>
                 <div className="flex items-center gap-3">
                      {!isGroup && (
-                        <button onClick={() => onToggleFavorite(path)} className={isFavorite ? 'text-amber-500 hover:text-amber-600' : 'text-slate-500 hover:text-slate-800'} title="Favorilere Ekle/Kaldır">
+                        <button onClick={() => onToggleFavorite(path)} className={`${isFavorite ? 'text-amber-500 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100'}`} title="Favorilere Ekle/Kaldır">
                             {isFavorite ? <StarIcon /> : <StarOutlineIcon />}
                         </button>
                     )}
-                    <button onClick={() => onToggleVisibility(path)} className="text-slate-500 hover:text-slate-800" title={isHidden ? 'Göster' : 'Gizle'}>
+                    <button onClick={() => onToggleVisibility(path)} className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100" title={isHidden ? 'Göster' : 'Gizle'}>
                         {isHidden ? <EyeSlashIcon /> : <EyeIcon />}
                     </button>
                     {isGroup && (
                         <>
-                            <button onClick={() => onRename(path)} className="text-blue-600 hover:text-blue-800" title="Yeniden Adlandır"><PencilIcon /></button>
-                            <button onClick={() => onDelete(path)} className="text-red-600 hover:text-red-800" title="Grubu Sil"><TrashIcon /></button>
+                            <button onClick={() => onRename(path)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300" title="Yeniden Adlandır"><PencilIcon /></button>
+                            <button onClick={() => onDelete(path)} className="text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400" title="Grubu Sil"><TrashIcon /></button>
                         </>
                     )}
                 </div>
             </div>
             {isGroup && (
                 <div 
-                    className={`ml-6 pl-4 border-l-2 group-drop-zone ${dropTarget?.path.toString() === path.toString() && dropTarget?.position === 'inside' ? 'drag-over-group' : ''}`}
+                    className={`ml-6 pl-4 border-l-2 dark:border-slate-700 group-drop-zone ${dropTarget?.path.toString() === path.toString() && dropTarget?.position === 'inside' ? 'drag-over-group' : ''}`}
                     onDragOver={(e) => onDragOver(e, path)}
                     onDrop={(e) => onDrop(e, path)}
                 >
@@ -147,7 +147,7 @@ const MenuItemComponent: React.FC<{
                             {...{ onDragStart, onDragOver, onDrop, onDragEnd, onDragLeave, dropTarget, onRename, onDelete, onToggleVisibility, onToggleFavorite, favoriteOrder }}
                         />
                     ))}
-                     {item.children?.length === 0 && <div className="text-xs text-slate-400 p-4 text-center">Gruba öğe sürükleyin</div>}
+                     {item.children?.length === 0 && <div className="text-xs text-slate-400 dark:text-slate-500 p-4 text-center">Gruba öğe sürükleyin</div>}
                 </div>
             )}
             {showDropIndicator('after') && <div className="drop-indicator"></div>}
@@ -164,12 +164,12 @@ const QuickActionItem: React.FC<{
     if (!itemInfo) return null;
 
     return (
-        <div className="flex items-center gap-3 p-3 mb-2 rounded-md font-medium text-sm border bg-slate-50">
+        <div className="quick-action-item flex items-center gap-3 p-3 mb-2 rounded-md font-medium text-sm border dark:border-slate-700 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
             <div className="flex items-center gap-3 flex-grow">
-                {itemInfo.icon}
+                <span className="text-slate-600 dark:text-slate-300">{itemInfo.icon}</span>
                 <span>{itemInfo.label}</span>
             </div>
-            <button onClick={() => onToggleFavorite(item.id)} className={isFavorite ? 'text-amber-500 hover:text-amber-600' : 'text-slate-500 hover:text-slate-800'} title="Favorilere Ekle/Kaldır">
+            <button onClick={() => onToggleFavorite(item.id)} className={`${isFavorite ? 'text-amber-500 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100'}`} title="Favorilere Ekle/Kaldır">
                 {isFavorite ? <StarIcon /> : <StarOutlineIcon />}
             </button>
         </div>
@@ -190,9 +190,9 @@ const FavoriteItemComponent: React.FC<{
             onDragEnter={(e) => onDragEnter(e, index)}
             onDragEnd={onDragEnd}
             data-fav-index={index}
-            className="draggable-item flex items-center gap-3 p-3 mb-2 rounded-md font-medium text-sm border bg-white"
+            className="favorite-sorter-item draggable-item flex items-center gap-3 p-3 mb-2 rounded-md font-medium text-sm border dark:border-slate-700 bg-white dark:bg-slate-600 text-slate-800 dark:text-slate-200"
         >
-            {item.icon}
+            <span className="text-slate-600 dark:text-slate-300">{item.icon}</span>
             <span>{item.label}</span>
         </div>
     );
@@ -229,8 +229,8 @@ const PromptModal: React.FC<{
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div ref={modalRef} className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-                <h3 className="text-lg font-bold text-slate-800 mb-4">{title}</h3>
+            <div ref={modalRef} className="prompt-modal-panel bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md p-6">
+                <h3 className="modal-title text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">{title}</h3>
                 <form onSubmit={handleSubmit}>
                     <label htmlFor="prompt-input" className={formLabelClass}>{label}</label>
                     <input
@@ -241,9 +241,9 @@ const PromptModal: React.FC<{
                         onChange={(e) => setValue(e.target.value)}
                         className={formInputClass}
                     />
-                    <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
-                        <button type="button" onClick={onClose} className="font-semibold py-2 px-4 rounded-md transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300">İptal</button>
-                        <button type="submit" className="font-semibold py-2 px-4 rounded-md transition-colors bg-indigo-600 text-white hover:bg-indigo-700">Onayla</button>
+                    <div className="modal-actions flex justify-end gap-3 mt-6 pt-4 border-t dark:border-slate-700">
+                        <button type="button" onClick={onClose} className="secondary-action-button font-semibold py-2 px-4 rounded-md transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600">İptal</button>
+                        <button type="submit" className="primary-action-button font-semibold py-2 px-4 rounded-md transition-colors bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-400">Onayla</button>
                     </div>
                 </form>
             </div>
@@ -270,14 +270,14 @@ const ConfirmModal: React.FC<{
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div ref={modalRef} className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-                <p className="text-slate-700 mb-6">{message}</p>
-                <div className="flex justify-end gap-3 pt-4 border-t">
-                    <button type="button" onClick={onClose} className="font-semibold py-2 px-4 rounded-md transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300">Hayır</button>
+            <div ref={modalRef} className="confirm-modal-panel bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md p-6">
+                <p className="modal-message text-slate-700 dark:text-slate-300 mb-6">{message}</p>
+                <div className="modal-actions flex justify-end gap-3 pt-4 border-t dark:border-slate-700">
+                    <button type="button" onClick={onClose} className="secondary-action-button font-semibold py-2 px-4 rounded-md transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600">Hayır</button>
                     <button
                         type="button"
                         onClick={() => { onConfirm(); onClose(); }}
-                        className="font-semibold py-2 px-4 rounded-md transition-colors bg-red-600 text-white hover:bg-red-700"
+                        className="danger-action-button font-semibold py-2 px-4 rounded-md transition-colors bg-red-600 text-white hover:bg-red-700"
                     >
                         Evet
                     </button>
@@ -561,20 +561,20 @@ const SettingsMenuPage: React.FC<{
     };
 
     return (
-        <div>
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-slate-800">Menü Düzenle</h1>
+        <div id="menu-editor-page">
+            <div className="page-header flex justify-between items-center mb-6">
+                <h1 className="page-title text-3xl font-bold text-slate-800 dark:text-slate-100">Menü Düzenle</h1>
                 <div className="flex gap-4">
-                    <button onClick={handleReset} className="font-semibold py-2 px-4 rounded-md transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300">Sıfırla</button>
-                    <button onClick={handleSave} className="font-semibold py-2 px-4 rounded-md transition-colors bg-indigo-600 text-white hover:bg-indigo-700">Kaydet</button>
+                    <button id="reset-menu-settings-button" onClick={handleReset} className="secondary-action-button font-semibold py-2 px-4 rounded-md transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600">Sıfırla</button>
+                    <button id="save-menu-settings-button" onClick={handleSave} className="primary-action-button font-semibold py-2 px-4 rounded-md transition-colors bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-400">Kaydet</button>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-white p-6 rounded-lg shadow border">
-                    <div className="flex justify-between items-center pb-4 border-b mb-4">
-                        <h2 className="text-xl font-bold text-slate-800">Menü Yapısı</h2>
-                        <button onClick={handleAddGroup} className="font-semibold py-1 px-3 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300">
+                <div id="menu-structure-panel" className="settings-panel bg-white dark:bg-slate-800 p-6 rounded-lg shadow border dark:border-slate-700">
+                    <div className="panel-header flex justify-between items-center pb-4 border-b dark:border-slate-600 mb-4">
+                        <h2 className="panel-title text-xl font-bold text-slate-800 dark:text-slate-100">Menü Yapısı</h2>
+                        <button id="add-menu-group-button" onClick={handleAddGroup} className="secondary-action-button font-semibold py-1 px-3 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500">
                            <PlusIcon /> Grup Ekle
                         </button>
                     </div>
@@ -598,14 +598,14 @@ const SettingsMenuPage: React.FC<{
                            />
                         ))}
                         {menuStructure.length === 0 && (
-                            <div className="text-center text-slate-500 py-10">
+                            <div className="empty-message text-center text-slate-500 dark:text-slate-400 py-10">
                                 Menü boş. Başlamak için bir grup ekleyin.
                             </div>
                         )}
                     </div>
-                    <div className="mt-6 pt-4 border-t">
-                        <h3 className="text-lg font-bold text-slate-700 mb-4">Hızlı İşlemler</h3>
-                        <div>
+                    <div className="mt-6 pt-4 border-t dark:border-slate-600">
+                        <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-4">Hızlı İşlemler</h3>
+                        <div id="quick-actions-list">
                             {quickActionItems.map(item => (
                                 <QuickActionItem
                                     key={item.id}
@@ -618,8 +618,8 @@ const SettingsMenuPage: React.FC<{
                     </div>
                 </div>
 
-                 <div className="bg-white p-6 rounded-lg shadow border">
-                    <h2 className="text-xl font-bold text-slate-800 pb-4 border-b mb-4">Favoriler Sıralaması</h2>
+                 <div id="favorites-sorter-panel" className="settings-panel bg-white dark:bg-slate-800 p-6 rounded-lg shadow border dark:border-slate-700">
+                    <h2 className="panel-title text-xl font-bold text-slate-800 dark:text-slate-100 pb-4 border-b dark:border-slate-600 mb-4">Favoriler Sıralaması</h2>
                     <div className="min-h-[300px] p-2">
                         {favoritesList.map((fav, index) => (
                            <FavoriteItemComponent
@@ -632,7 +632,7 @@ const SettingsMenuPage: React.FC<{
                            />
                         ))}
                         {favoritesList.length === 0 && (
-                            <div className="text-center text-slate-500 py-10">
+                            <div className="empty-message text-center text-slate-500 dark:text-slate-400 py-10">
                                 Favori öğe yok. Menüden eklemek için yıldız ikonuna tıklayın.
                             </div>
                         )}

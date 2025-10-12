@@ -146,12 +146,13 @@ const StockOverviewPage: React.FC<{
     ];
 
     return (
-        <div>
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-slate-800">Stok Durumu</h1>
+        <div id="stock-overview-page" className="stock-overview-page">
+            <div className="page-header flex justify-between items-center mb-6">
+                <h1 className="page-title text-3xl font-bold text-slate-800 dark:text-slate-100">Stok Durumu</h1>
             </div>
-            <div className="mb-4">
+            <div className="search-bar mb-4">
                 <input
+                    id="stock-search-input"
                     type="text"
                     placeholder="Ürün adı veya SKU ile ara..."
                     value={searchTerm}
@@ -159,14 +160,14 @@ const StockOverviewPage: React.FC<{
                     className={formInputClass}
                 />
             </div>
-            <div className="bg-white rounded-lg shadow border overflow-hidden">
+            <div className="stock-table-container bg-white dark:bg-slate-800 rounded-lg shadow border dark:border-slate-700 overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                        <thead className="border-b bg-slate-50">
+                    <table id="stock-overview-table" className="data-table w-full text-left">
+                        <thead className="table-header-row border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
                             <tr>
                                 {headers.map(header => (
-                                     <th key={header.key} className={`p-4 text-sm font-semibold text-slate-600 uppercase tracking-wider ${header.width} text-${header.align}`}>
-                                        <button onClick={() => requestSort(header.key)} className={`w-full text-${header.align} flex items-center ${header.align === 'right' ? 'justify-end' : ''} gap-1 hover:text-slate-800`}>
+                                     <th key={header.key} className={`table-header-cell p-4 text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider ${header.width} text-${header.align}`}>
+                                        <button onClick={() => requestSort(header.key)} className={`sort-button w-full text-${header.align} flex items-center ${header.align === 'right' ? 'justify-end' : ''} gap-1 hover:text-slate-800 dark:hover:text-slate-100`}>
                                             {header.label}
                                             {sortConfig?.key === header.key ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : null}
                                         </button>
@@ -174,44 +175,44 @@ const StockOverviewPage: React.FC<{
                                 ))}
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="table-body">
                             {groupedStock.length === 0 && (
-                                <tr><td colSpan={3} className="text-center p-8 text-slate-500">Gösterilecek stok bulunamadı.</td></tr>
+                                <tr className="empty-row"><td colSpan={3} className="empty-message text-center p-8 text-slate-500 dark:text-slate-400">Gösterilecek stok bulunamadı.</td></tr>
                             )}
                             {groupedStock.map(({ warehouse, totalQuantity, shelflessProducts, shelves }) => (
                                 <React.Fragment key={warehouse.id}>
-                                    <tr className="border-b bg-slate-100 hover:bg-slate-200 cursor-pointer" onClick={() => toggleExpand(`wh-${warehouse.id}`)}>
-                                        <td className="p-4 font-bold text-slate-800">
+                                    <tr className="warehouse-row table-group-header border-b dark:border-slate-700 bg-slate-100 dark:bg-slate-700/80 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer" onClick={() => toggleExpand(`wh-${warehouse.id}`)}>
+                                        <td className="table-cell p-4 font-bold text-slate-800 dark:text-slate-100">
                                             <i className={`fa-solid fa-fw ${expanded[`wh-${warehouse.id}`] ? 'fa-chevron-down' : 'fa-chevron-right'} mr-2`}></i>
                                             {warehouse.name}
                                         </td>
-                                        <td></td>
-                                        <td className="p-4 font-bold text-slate-800 text-right">{formatNumber(totalQuantity)}</td>
+                                        <td className="table-cell"></td>
+                                        <td className="table-cell p-4 font-bold text-slate-800 dark:text-slate-100 text-right">{formatNumber(totalQuantity)}</td>
                                     </tr>
                                     {expanded[`wh-${warehouse.id}`] && (
                                         <>
                                             {shelflessProducts.map(({ product, quantity }) => (
-                                                <tr key={`sl-${product.id}`} className="border-b hover:bg-slate-50">
-                                                    <td className="p-4 pl-12 text-slate-700">{product.name}</td>
-                                                    <td className="p-4 text-slate-600 font-mono text-sm">{product.sku}</td>
-                                                    <td className="p-4 text-slate-800 font-medium text-right">{formatNumber(quantity)} {getUnitAbbr(product.unit_id)}</td>
+                                                <tr key={`sl-${product.id}`} className="product-row table-row border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                                                    <td className="table-cell p-4 pl-12 text-slate-700 dark:text-slate-300">{product.name}</td>
+                                                    <td className="table-cell p-4 text-slate-600 dark:text-slate-400 font-mono text-sm">{product.sku}</td>
+                                                    <td className="table-cell p-4 text-slate-800 dark:text-slate-200 font-medium text-right">{formatNumber(quantity)} {getUnitAbbr(product.unit_id)}</td>
                                                 </tr>
                                             ))}
                                             {Object.values(shelves).map(({ shelf, totalQuantity: shelfTotal, products: shelfProducts }) => (
                                                 <React.Fragment key={shelf.id}>
-                                                    <tr className="border-b bg-slate-50 hover:bg-slate-100 cursor-pointer" onClick={() => toggleExpand(`sh-${shelf.id}`)}>
-                                                        <td className="p-4 pl-12 font-semibold text-slate-700">
+                                                    <tr className="shelf-row table-group-header border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-700/80 cursor-pointer" onClick={() => toggleExpand(`sh-${shelf.id}`)}>
+                                                        <td className="table-cell p-4 pl-12 font-semibold text-slate-700 dark:text-slate-200">
                                                              <i className={`fa-solid fa-fw ${expanded[`sh-${shelf.id}`] ? 'fa-chevron-down' : 'fa-chevron-right'} mr-2`}></i>
                                                             {shelf.name}
                                                         </td>
-                                                        <td></td>
-                                                        <td className="p-4 font-semibold text-slate-700 text-right">{formatNumber(shelfTotal)}</td>
+                                                        <td className="table-cell"></td>
+                                                        <td className="table-cell p-4 font-semibold text-slate-700 dark:text-slate-200 text-right">{formatNumber(shelfTotal)}</td>
                                                     </tr>
                                                     {expanded[`sh-${shelf.id}`] && shelfProducts.map(({ product, quantity }) => (
-                                                        <tr key={product.id} className="border-b hover:bg-slate-50">
-                                                            <td className="p-4 pl-20 text-slate-700">{product.name}</td>
-                                                            <td className="p-4 text-slate-600 font-mono text-sm">{product.sku}</td>
-                                                            <td className="p-4 text-slate-800 font-medium text-right">{formatNumber(quantity)} {getUnitAbbr(product.unit_id)}</td>
+                                                        <tr key={product.id} className="product-row table-row border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                                                            <td className="table-cell p-4 pl-20 text-slate-700 dark:text-slate-300">{product.name}</td>
+                                                            <td className="table-cell p-4 text-slate-600 dark:text-slate-400 font-mono text-sm">{product.sku}</td>
+                                                            <td className="table-cell p-4 text-slate-800 dark:text-slate-200 font-medium text-right">{formatNumber(quantity)} {getUnitAbbr(product.unit_id)}</td>
                                                         </tr>
                                                     ))}
                                                 </React.Fragment>

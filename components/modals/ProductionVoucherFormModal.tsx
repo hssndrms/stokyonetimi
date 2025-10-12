@@ -55,8 +55,8 @@ const LineRow: React.FC<{
     const sku = getProductSku(line.productId);
     
     return (
-        <tr className="border-t">
-            <td className="p-2 w-[25%]">
+        <tr className="table-row border-t dark:border-slate-700">
+            <td className="table-cell p-2 w-[25%]">
                 <SearchableSelect 
                     options={productGroups} 
                     value={line.productGroupId} 
@@ -64,8 +64,8 @@ const LineRow: React.FC<{
                     placeholder="Grup Seçin" 
                 />
             </td>
-            <td className="p-2 w-[15%]"><input type="text" value={sku} className={`${formInputSmallClass} bg-slate-100 font-mono`} readOnly /></td>
-            <td className="p-2 w-[30%]">
+            <td className="table-cell p-2 w-[15%]"><input type="text" value={sku} className={`${formInputSmallClass} bg-slate-100 dark:bg-slate-700 font-mono`} readOnly /></td>
+            <td className="table-cell p-2 w-[30%]">
                 <SearchableSelect 
                     options={line.productGroupId ? products.filter(p => p.group_id === line.productGroupId) : []} 
                     value={line.productId} 
@@ -75,8 +75,8 @@ const LineRow: React.FC<{
                     error={errors[lineType]?.[line.id]?.productId} 
                 />
             </td>
-            <td className="p-2 w-[15%] text-slate-600 font-medium text-right">{stockInfo}</td>
-            <td className="p-2 w-[10%]">
+            <td className="table-cell p-2 w-[15%] text-slate-600 dark:text-slate-400 font-medium text-right">{stockInfo}</td>
+            <td className="table-cell p-2 w-[10%]">
                 <input 
                     type="number" 
                     step="any" 
@@ -86,11 +86,11 @@ const LineRow: React.FC<{
                     className={`${formInputSmallClass} ${errors[lineType]?.[line.id]?.quantity ? 'border-red-500' : ''}`} 
                 />
             </td>
-            <td className="p-2 w-[5%] text-center">
+            <td className="table-cell p-2 w-[5%] text-center">
                 <button 
                     type="button" 
                     onClick={() => onRemove(line.id)} 
-                    className="text-red-600 hover:text-red-800 disabled:text-slate-300" 
+                    className="remove-line-button text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400 disabled:text-slate-300 dark:disabled:text-slate-600" 
                     disabled={isRemovalDisabled}
                 >
                     <TrashIcon />
@@ -313,20 +313,20 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
     };
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form id="production-voucher-form" onSubmit={handleSubmit}>
             <div className="space-y-6">
-                <fieldset className="border p-4 rounded-md">
-                    <legend className="text-md font-medium text-slate-700 px-2 -mb-3">Fiş Başlık Bilgileri</legend>
+                <fieldset id="voucher-header-info" className="form-fieldset border dark:border-slate-600 p-4 rounded-md">
+                    <legend className="form-legend text-md font-medium text-slate-700 dark:text-slate-300 px-2 -mb-3">Fiş Başlık Bilgileri</legend>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-4">
-                        <div><label className={formLabelClass}>Fiş Numarası</label><input type="text" value={voucherNumber} className={`${formInputSmallClass} bg-slate-100`} readOnly /></div>
-                        <div><label className={formLabelClass}>Tarih</label><input type="date" value={header.date} onChange={e => handleHeaderChange('date', e.target.value)} className={formInputSmallClass} /></div>
-                        <div className="md:col-span-3"><label className={formLabelClass}>Notlar</label><input type="text" value={header.notes} onChange={e => handleHeaderChange('notes', e.target.value)} className={formInputSmallClass} /></div>
+                        <div><label htmlFor="voucher-number" className={formLabelClass}>Fiş Numarası</label><input id="voucher-number" type="text" value={voucherNumber} className={`${formInputSmallClass} bg-slate-100 dark:bg-slate-700`} readOnly /></div>
+                        <div><label htmlFor="voucher-date" className={formLabelClass}>Tarih</label><input id="voucher-date" type="date" value={header.date} onChange={e => handleHeaderChange('date', e.target.value)} className={formInputSmallClass} /></div>
+                        <div className="md:col-span-3"><label htmlFor="voucher-notes" className={formLabelClass}>Notlar</label><input id="voucher-notes" type="text" value={header.notes} onChange={e => handleHeaderChange('notes', e.target.value)} className={formInputSmallClass} /></div>
                     </div>
                 </fieldset>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <fieldset className="border p-4 rounded-md">
-                        <legend className="text-md font-medium text-slate-700 px-2 -mb-3">Kaynak Konum</legend>
+                     <fieldset id="source-location-info" className="form-fieldset border dark:border-slate-600 p-4 rounded-md">
+                        <legend className="form-legend text-md font-medium text-slate-700 dark:text-slate-300 px-2 -mb-3">Kaynak Konum</legend>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                             <div>
                                 <label className={formLabelClass}>Çıkan Depo</label>
@@ -338,8 +338,8 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
                             </div>
                         </div>
                     </fieldset>
-                     <fieldset className="border p-4 rounded-md">
-                        <legend className="text-md font-medium text-slate-700 px-2 -mb-3">Hedef Konum</legend>
+                     <fieldset id="destination-location-info" className="form-fieldset border dark:border-slate-600 p-4 rounded-md">
+                        <legend className="form-legend text-md font-medium text-slate-700 dark:text-slate-300 px-2 -mb-3">Hedef Konum</legend>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                            <div>
                                 <label className={formLabelClass}>Giren Depo</label>
@@ -353,29 +353,29 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
                     </fieldset>
                 </div>
 
-                <div>
+                <div id="consumed-materials-section">
                     <div className="flex justify-between items-center mb-2">
-                         <h3 className="text-lg font-bold text-slate-800">Kullanılan Malzemeler (Gider)</h3>
+                         <h3 className="section-title text-lg font-bold text-slate-800 dark:text-slate-100">Kullanılan Malzemeler (Gider)</h3>
                          <div className="flex items-center gap-4">
-                             <button type="button" onClick={() => setShowStock(s => !s)} disabled={!header.sourceWarehouseId} className="font-semibold py-1 px-3 text-xs rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-sky-100 text-sky-800 hover:bg-sky-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed">
+                             <button id="toggle-stock-visibility-button" type="button" onClick={() => setShowStock(s => !s)} disabled={!header.sourceWarehouseId} className="font-semibold py-1 px-3 text-xs rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-sky-100 text-sky-800 hover:bg-sky-200 dark:bg-sky-900/40 dark:text-sky-200 dark:hover:bg-sky-900/60 disabled:bg-slate-100 dark:disabled:bg-slate-700 disabled:text-slate-400 dark:disabled:text-slate-500 disabled:cursor-not-allowed">
                                 <i className={`fa-solid fa-fw ${showStock ? 'fa-eye-slash' : 'fa-eye'}`}></i> {showStock ? 'Stokları Gizle' : 'Mevcut Stokları Göster'}
                             </button>
-                            <button type="button" onClick={() => addLine('consumed')} className="font-semibold py-1 px-3 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300"><PlusIcon /> Satır Ekle</button>
+                            <button id="add-consumed-line-button" type="button" onClick={() => addLine('consumed')} className="font-semibold py-1 px-3 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500"><PlusIcon /> Satır Ekle</button>
                          </div>
                     </div>
-                    <div className="border rounded-md">
-                        <table className="w-full text-left text-sm min-w-[700px]">
-                            <thead className="bg-slate-50">
+                    <div className="data-table-container border dark:border-slate-700 rounded-md">
+                        <table className="data-table w-full text-left text-sm min-w-[700px]">
+                            <thead className="table-header bg-slate-50 dark:bg-slate-700/50">
                                 <tr>
-                                    <th className="p-2 font-semibold text-slate-600 w-[25%]">Ürün Grubu</th>
-                                    <th className="p-2 font-semibold text-slate-600 w-[15%]">Ürün Kodu</th>
-                                    <th className="p-2 font-semibold text-slate-600 w-[30%]">Ürün Adı</th>
-                                    <th className="p-2 font-semibold text-slate-600 w-[15%] text-right">Mevcut Stok</th>
-                                    <th className="p-2 font-semibold text-slate-600 w-[10%]">Miktar</th>
-                                    <th className="p-2 font-semibold text-slate-600 w-[5%]"></th>
+                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[25%]">Ürün Grubu</th>
+                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Ürün Kodu</th>
+                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[30%]">Ürün Adı</th>
+                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%] text-right">Mevcut Stok</th>
+                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[10%]">Miktar</th>
+                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[5%]"></th>
                                 </tr>
                             </thead>
-                            <tbody>{consumedLines.map(line => {
+                            <tbody className="table-body">{consumedLines.map(line => {
                                 const warehouseId = header.sourceWarehouseId;
                                 const shelfId = header.sourceShelfId;
                                 const stock = getStockInfo(line.productId, warehouseId, shelfId);
@@ -399,24 +399,24 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
                     </div>
                 </div>
 
-                 <div>
+                 <div id="produced-products-section">
                     <div className="flex justify-between items-center mb-2">
-                         <h3 className="text-lg font-bold text-slate-800">Üretilen Ürünler (Girdi)</h3>
-                         <button type="button" onClick={() => addLine('produced')} className="font-semibold py-1 px-3 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300"><PlusIcon /> Satır Ekle</button>
+                         <h3 className="section-title text-lg font-bold text-slate-800 dark:text-slate-100">Üretilen Ürünler (Girdi)</h3>
+                         <button id="add-produced-line-button" type="button" onClick={() => addLine('produced')} className="font-semibold py-1 px-3 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500"><PlusIcon /> Satır Ekle</button>
                     </div>
-                    <div className="border rounded-md">
-                        <table className="w-full text-left text-sm min-w-[700px]">
-                            <thead className="bg-slate-50">
+                    <div className="data-table-container border dark:border-slate-700 rounded-md">
+                        <table className="data-table w-full text-left text-sm min-w-[700px]">
+                            <thead className="table-header bg-slate-50 dark:bg-slate-700/50">
                                 <tr>
-                                    <th className="p-2 font-semibold text-slate-600 w-[25%]">Ürün Grubu</th>
-                                    <th className="p-2 font-semibold text-slate-600 w-[15%]">Ürün Kodu</th>
-                                    <th className="p-2 font-semibold text-slate-600 w-[30%]">Ürün Adı</th>
-                                    <th className="p-2 font-semibold text-slate-600 w-[15%] text-right">Mevcut Stok</th>
-                                    <th className="p-2 font-semibold text-slate-600 w-[10%]">Miktar</th>
-                                    <th className="p-2 font-semibold text-slate-600 w-[5%]"></th>
+                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[25%]">Ürün Grubu</th>
+                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Ürün Kodu</th>
+                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[30%]">Ürün Adı</th>
+                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%] text-right">Mevcut Stok</th>
+                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[10%]">Miktar</th>
+                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[5%]"></th>
                                 </tr>
                             </thead>
-                            <tbody>{producedLines.map(line => {
+                            <tbody className="table-body">{producedLines.map(line => {
                                 const warehouseId = header.destWarehouseId;
                                 const shelfId = header.destShelfId;
                                 const stock = getStockInfo(line.productId, warehouseId, shelfId);
@@ -441,11 +441,11 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
                 </div>
             </div>
 
-             <div className="flex justify-between items-center mt-6 pt-4 border-t">
-                <div>{isEdit && (<button type="button" onClick={handleDelete} className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-red-600 text-white hover:bg-red-700"><TrashIcon /> Sil</button>)}</div>
+             <div className="modal-actions flex justify-between items-center mt-6 pt-4 border-t dark:border-slate-700">
+                <div>{isEdit && (<button id="delete-voucher-button" type="button" onClick={handleDelete} className="danger-action-button font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600"><TrashIcon /> Sil</button>)}</div>
                 <div className="flex gap-3">
-                    <button type="button" onClick={onClose} className="font-semibold py-2 px-4 rounded-md transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300">İptal</button>
-                    <button type="submit" className="font-semibold py-2 px-4 rounded-md transition-colors bg-indigo-600 text-white hover:bg-indigo-700">Kaydet</button>
+                    <button id="cancel-voucher-button" type="button" onClick={onClose} className="secondary-action-button font-semibold py-2 px-4 rounded-md transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600">İptal</button>
+                    <button id="save-voucher-button" type="submit" className="primary-action-button font-semibold py-2 px-4 rounded-md transition-colors bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-400">Kaydet</button>
                 </div>
             </div>
         </form>

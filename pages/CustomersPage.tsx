@@ -37,32 +37,33 @@ const AccountsPage: React.FC<{
     }));
 
     return (
-        <div>
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-slate-800">Cariler</h1>
+        <div id="accounts-page" className="accounts-page">
+            <div className="page-header flex justify-between items-center mb-6">
+                <h1 className="page-title text-3xl font-bold text-slate-800 dark:text-slate-100">Cariler</h1>
             </div>
 
-            <div className="bg-white p-4 rounded-lg shadow border mb-6">
+            <div id="filter-panel" className="filter-panel bg-white dark:bg-slate-800 p-4 rounded-lg shadow border dark:border-slate-700 mb-6">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                     <div className="flex items-center gap-6">
-                        <label className="font-medium text-slate-700">Cari Tipi:</label>
+                        <label className="font-medium text-slate-700 dark:text-slate-300">Cari Tipi:</label>
                         <div className="flex items-center gap-4">
                             <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="typeFilter" value="all" checked={typeFilter === 'all'} onChange={() => setTypeFilter('all')} className="form-radio h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500" />
-                                <span>Tümü</span>
+                                <input type="radio" name="typeFilter" value="all" checked={typeFilter === 'all'} onChange={() => setTypeFilter('all')} className="form-radio h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500 dark:bg-slate-700 dark:border-slate-600" />
+                                <span className="text-slate-700 dark:text-slate-300">Tümü</span>
                             </label>
                             <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="typeFilter" value="customer" checked={typeFilter === 'customer'} onChange={() => setTypeFilter('customer')} className="form-radio h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500" />
-                                <span>Müşteri</span>
+                                <input type="radio" name="typeFilter" value="customer" checked={typeFilter === 'customer'} onChange={() => setTypeFilter('customer')} className="form-radio h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500 dark:bg-slate-700 dark:border-slate-600" />
+                                <span className="text-slate-700 dark:text-slate-300">Müşteri</span>
                             </label>
                             <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="typeFilter" value="supplier" checked={typeFilter === 'supplier'} onChange={() => setTypeFilter('supplier')} className="form-radio h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500" />
-                                <span>Tedarikçi</span>
+                                <input type="radio" name="typeFilter" value="supplier" checked={typeFilter === 'supplier'} onChange={() => setTypeFilter('supplier')} className="form-radio h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500 dark:bg-slate-700 dark:border-slate-600" />
+                                <span className="text-slate-700 dark:text-slate-300">Tedarikçi</span>
                             </label>
                         </div>
                     </div>
                     <div>
                         <input
+                            id="account-search-input"
                             type="text"
                             placeholder="Cari adına göre ara..."
                             value={searchTerm}
