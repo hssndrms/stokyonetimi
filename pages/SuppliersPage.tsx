@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect } from 'react';
 import { GeneralSettings } from '../types';
 import { useToast } from '../context/ToastContext';
@@ -108,6 +105,19 @@ const GeneralSettingsPage: React.FC<{
                                 <div>
                                     <label htmlFor="stock_transfer_length" className={formLabelClass}>Sayısal Karakter Sayısı</label>
                                     <input type="number" name="stock_transfer_length" id="stock_transfer_length" min="1" max="10" value={formData.stock_transfer_length || 8} onChange={handleChange} className={formInputClass} required />
+                                </div>
+                            </div>
+                        </fieldset>
+                         <fieldset className="border p-4 rounded-md">
+                            <legend className="text-lg font-medium text-slate-700 px-2">Üretim Fişleri</legend>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                                <div>
+                                    <label htmlFor="production_prefix" className={formLabelClass}>Kod Öneki</label>
+                                    <input type="text" name="production_prefix" id="production_prefix" value={formData.production_prefix || ''} onChange={handleChange} className={formInputClass} required />
+                                </div>
+                                <div>
+                                    <label htmlFor="production_length" className={formLabelClass}>Sayısal Karakter Sayısı</label>
+                                    <input type="number" name="production_length" id="production_length" min="1" max="10" value={formData.production_length || 8} onChange={handleChange} className={formInputClass} required />
                                 </div>
                             </div>
                         </fieldset>

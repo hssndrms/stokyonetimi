@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Page, ModalState, MenuItem } from './types';
 import { ToastProvider } from './context/ToastContext';
@@ -22,6 +19,7 @@ import SettingsMenuPage from './pages/SettingsMenuPage';
 import StockMovementReportPage from './pages/reports/StockMovementReportPage';
 import CurrentStockReportPage from './pages/reports/CurrentStockReportPage';
 import InventoryReportPage from './pages/reports/InventoryReportPage';
+import ProductionVouchersPage from './pages/ProductionVouchersPage';
 import SetupPage from './pages/SetupPage';
 
 declare var gsap: any;
@@ -103,7 +101,7 @@ const App: React.FC = () => {
     const [modal, setModal] = useState<ModalState>({ type: null });
     const [isSidebarOpen, setIsSidebarOpen] = useLocalStorage<boolean>('sidebarOpen', true);
     const [menuStructure, setMenuStructure] = useLocalStorage<MenuItem[]>('menuStructure', DEFAULT_MENU_STRUCTURE);
-    const [favoriteOrder, setFavoriteOrder] = useLocalStorage<string[]>('favoriteOrder', ['stock-in', 'stock-out', 'stock-transfer']);
+    const [favoriteOrder, setFavoriteOrder] = useLocalStorage<string[]>('favoriteOrder', ['stock-in', 'stock-out', 'stock-transfer', 'add-production-voucher']);
     const [forceShowSetup, setForceShowSetup] = useState(false);
 
 
@@ -118,6 +116,8 @@ const App: React.FC = () => {
             setModal({ type: 'STOCK_OUT' });
         } else if (id === 'stock-transfer') {
             setModal({ type: 'STOCK_TRANSFER' });
+        } else if (id === 'add-production-voucher') {
+            setModal({ type: 'ADD_PRODUCTION_VOUCHER' });
         } else {
             const menuItem = ALL_MENU_ITEMS[id];
             if (menuItem && menuItem.page) {
@@ -182,6 +182,7 @@ const App: React.FC = () => {
             case 'product-groups': return <ProductGroupsPage productGroups={productGroups} setModal={setModal} handleDeleteProductGroup={handleDeleteProductGroup} />;
             case 'units': return <UnitsPage units={units} setModal={setModal} handleDeleteUnit={handleDeleteUnit} />;
             case 'accounts': return <AccountsPage accounts={accounts} setModal={setModal} handleDeleteAccount={handleDeleteAccount} />;
+            case 'production-vouchers': return <ProductionVouchersPage movements={stockMovements} products={products} warehouses={warehouses} shelves={shelves} units={units} setModal={setModal} generalSettings={generalSettings} />;
             case 'reports-movements':
                 return <StockMovementReportPage {...{movements: stockMovements, products, warehouses, shelves, units, accounts, productGroups, setModal, generalSettings}} />;
             case 'reports-stock':

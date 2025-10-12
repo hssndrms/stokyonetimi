@@ -1,5 +1,3 @@
-
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Shelf, Product, Warehouse, StockMovement, Unit, Account, ProductGroup, ModalState, GeneralSettings } from '../../types';
 import { findById, formatNumber } from '../../utils/helpers';
@@ -8,6 +6,7 @@ import { exportToCsv } from '../../utils/csvExporter';
 import { exportToExcel } from '../../utils/excelExporter';
 import SearchableSelect from '../../components/SearchableSelect';
 import { formLabelClass, formInputSmallClass } from '../../styles/common';
+import { DownloadIcon } from '../../components/icons';
 
 const StockMovementReportPage: React.FC<{
     movements: StockMovement[];
@@ -95,9 +94,25 @@ const StockMovementReportPage: React.FC<{
     };
     
     const handleVoucherClick = (voucherNumber: string) => {
-        const isTransfer = voucherNumber.startsWith(generalSettings.stock_transfer_prefix);
+        const movement = movements.find(m => m.voucher_number === voucherNumber);
+        if (!movement) return;
+
+        let modalType: ModalState['type'] = null;
+        switch (movement.transaction_type) {
+            case 'TRANSFER':
+                modalType = 'EDIT_STOCK_TRANSFER';
+                break;
+            case 'PRODUCTION':
+                modalType = 'EDIT_PRODUCTION_VOUCHER';
+                break;
+            case 'STANDARD':
+            default:
+                modalType = 'EDIT_STOCK_VOUCHER';
+                break;
+        }
+
         setModal({
-            type: isTransfer ? 'EDIT_STOCK_TRANSFER' : 'EDIT_STOCK_VOUCHER',
+            type: modalType,
             data: { voucher_number: voucherNumber }
         });
     };
@@ -126,17 +141,27 @@ const StockMovementReportPage: React.FC<{
                 return false;
             }
             if (filters.warehouseId) {
-                if (item.warehouse_id !== filters.warehouseId) {
-                    const pairMovements = movements.filter(m => m.voucher_number === item.voucher_number && m.product_id === item.product_id);
-                    const pair = pairMovements.find(p => p.id !== item.id);
-                    if (!pair || pair.warehouse_id !== filters.warehouseId) return false;
+                 if (item.warehouse_id !== filters.warehouseId) {
+                    // For transfers, check if the other leg of the transfer matches the warehouse filter
+                    if (item.transaction_type === 'TRANSFER') {
+                        const pairMovements = movements.filter(m => m.voucher_number === item.voucher_number && m.product_id === item.product_id);
+                        const pair = pairMovements.find(p => p.id !== item.id);
+                        if (!pair || pair.warehouse_id !== filters.warehouseId) return false;
+                    } else {
+                        // For non-transfers, it's a direct mismatch
+                        return false;
+                    }
                 }
             }
             if (filters.shelfId) {
                  if (item.shelf_id !== filters.shelfId) {
-                    const pairMovements = movements.filter(m => m.voucher_number === item.voucher_number && m.product_id === item.product_id);
-                    const pair = pairMovements.find(p => p.id !== item.id);
-                    if (!pair || pair.shelf_id !== filters.shelfId) return false;
+                    if (item.transaction_type === 'TRANSFER') {
+                        const pairMovements = movements.filter(m => m.voucher_number === item.voucher_number && m.product_id === item.product_id);
+                        const pair = pairMovements.find(p => p.id !== item.id);
+                        if (!pair || pair.shelf_id !== filters.shelfId) return false;
+                    } else {
+                         return false;
+                    }
                  }
             }
             
@@ -154,9 +179,9 @@ const StockMovementReportPage: React.FC<{
         const finalReportData: any[] = [];
 
         Object.values(groupedByVoucher).forEach(movementsInVoucher => {
-            const isTransfer = movementsInVoucher[0].voucher_number.startsWith(generalSettings.stock_transfer_prefix);
+            const transactionType = movementsInVoucher[0].transaction_type;
 
-            if (isTransfer) {
+            if (transactionType === 'TRANSFER') {
                 const groupedByProduct = movementsInVoucher.reduce((acc, m) => {
                     if (!acc[m.product_id]) acc[m.product_id] = { in: null, out: null };
                     if (m.type === 'IN') acc[m.product_id].in = m;
@@ -189,16 +214,23 @@ const StockMovementReportPage: React.FC<{
                         });
                     }
                 });
-            } else {
+            } else { // Handles 'STANDARD' and 'PRODUCTION'
                 movementsInVoucher.forEach(m => {
                     const product = findById(products, m.product_id);
                     const warehouse = findById(warehouses, m.warehouse_id);
                     const shelf = findById(shelves, m.shelf_id);
 
+                    let işlemTürü = '';
+                    if (m.transaction_type === 'PRODUCTION') {
+                        işlemTürü = m.type === 'IN' ? 'Üretimden Giriş' : 'Üretim Sarf';
+                    } else { // STANDARD
+                        işlemTürü = m.type === 'IN' ? 'Giriş' : 'Çıkış';
+                    }
+
                     finalReportData.push({
                         "Tarih": new Date(m.date).toLocaleDateString(),
                         "Fiş No": m.voucher_number,
-                        "İşlem Türü": m.type === 'IN' ? 'Giriş' : 'Çıkış',
+                        "İşlem Türü": işlemTürü,
                         "Ürün Adı": product?.name,
                         "Miktar": `${formatNumber(m.quantity)} ${getUnitAbbr(m.product_id)}`,
                         "Çıkan Depo": m.type === 'OUT' ? warehouse?.name : '-',
@@ -377,8 +409,11 @@ const StockMovementReportPage: React.FC<{
                             onClick={handleExport} 
                             className="font-semibold py-2 px-4 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-600 text-white hover:bg-slate-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
                             disabled={sortedData.length === 0}
+                            title='Dışa Aktar'
+                            aria-label='Dışa Aktar'
                         >
-                            Dışa Aktar
+                        <DownloadIcon />
+                            
                         </button>
                     </div>
                 </div>

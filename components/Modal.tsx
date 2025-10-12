@@ -1,5 +1,3 @@
-
-
 import React, { useRef, useEffect } from 'react';
 import { ModalState, Warehouse, Shelf } from '../types';
 import { useInventory } from '../hooks/useInventory';
@@ -12,6 +10,7 @@ import ProductFormModal from './modals/ProductFormModal';
 import AccountFormModal from './modals/AccountFormModal';
 import StockMovementFormModal from './modals/StockMovementFormModal';
 import StockTransferFormModal from './modals/StockTransferFormModal';
+import ProductionVoucherFormModal from './modals/ProductionVoucherFormModal';
 import SimpleFormModal from './modals/SimpleFormModal';
 import ProductGroupFormModal from './modals/ProductGroupFormModal';
 import ConfirmDeleteModal from './modals/ConfirmDeleteModal';
@@ -59,6 +58,8 @@ const Modal: React.FC<ModalProps> = ({ state, onClose, setModal, ...props }) => 
             EDIT_STOCK_VOUCHER: 'Stok Fişi Düzenle',
             STOCK_TRANSFER: 'Stok Transfer Fişi',
             EDIT_STOCK_TRANSFER: 'Stok Transfer Fişi Düzenle',
+            ADD_PRODUCTION_VOUCHER: 'Yeni Üretim Fişi',
+            EDIT_PRODUCTION_VOUCHER: 'Üretim Fişi Düzenle',
             CONFIRM_DELETE: 'Silme Onayı',
         };
         return titles[type] || '';
@@ -95,6 +96,9 @@ const Modal: React.FC<ModalProps> = ({ state, onClose, setModal, ...props }) => 
             case 'STOCK_TRANSFER': return <StockTransferFormModal isEdit={false} {...modalProps} />;
             case 'EDIT_STOCK_TRANSFER': return <StockTransferFormModal isEdit={true} {...modalProps} />;
 
+            case 'ADD_PRODUCTION_VOUCHER': return <ProductionVoucherFormModal isEdit={false} {...modalProps} />;
+            case 'EDIT_PRODUCTION_VOUCHER': return <ProductionVoucherFormModal isEdit={true} {...modalProps} />;
+
             case 'CONFIRM_DELETE': return <ConfirmDeleteModal {...modalProps} />;
             
             default: return null;
@@ -102,7 +106,9 @@ const Modal: React.FC<ModalProps> = ({ state, onClose, setModal, ...props }) => 
     };
 
     const modalWidthClass = () => {
-        if (type === 'STOCK_IN' || type === 'STOCK_OUT' || type === 'EDIT_STOCK_VOUCHER' || type === 'STOCK_TRANSFER' || type === 'EDIT_STOCK_TRANSFER') return 'max-w-6xl';
+        if ([ 'STOCK_IN', 'STOCK_OUT', 'EDIT_STOCK_VOUCHER', 
+              'STOCK_TRANSFER', 'EDIT_STOCK_TRANSFER', 
+              'ADD_PRODUCTION_VOUCHER', 'EDIT_PRODUCTION_VOUCHER' ].includes(type)) return 'max-w-6xl';
         if (type === 'CONFIRM_DELETE') return 'max-w-md';
         return 'max-w-lg';
     }

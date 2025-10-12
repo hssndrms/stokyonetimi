@@ -65,7 +65,7 @@ const SearchableSelect: React.FC<{
         aria-invalid={error}
       />
       {isOpen && !disabled && (
-        <ul className="absolute z-20 w-full bg-white border border-slate-300 text-slate-900 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
+        <ul className="absolute z-[110] w-full bg-white border border-slate-300 text-slate-900 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
           {filteredOptions.map(option => (
               <li
                 key={option.id}

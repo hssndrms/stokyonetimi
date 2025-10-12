@@ -9,6 +9,7 @@ const EMPTY_SETTINGS: GeneralSettings = {
     stock_in_prefix: 'G', stock_in_length: 8,
     stock_out_prefix: 'C', stock_out_length: 8,
     stock_transfer_prefix: 'TR', stock_transfer_length: 8,
+    production_prefix: 'URT', production_length: 8,
 };
 
 export const useInventory = () => {
@@ -378,7 +379,7 @@ export const useInventory = () => {
         return data;
     };
 
-    const getNextVoucherNumber = async (type: 'IN' | 'OUT' | 'TRANSFER'): Promise<string> => {
+    const getNextVoucherNumber = async (type: 'IN' | 'OUT' | 'TRANSFER' | 'PRODUCTION'): Promise<string> => {
         const supabase = createSupabaseClient();
         if (!supabase) return '';
         const { data, error } = await supabase.rpc('get_next_voucher_number', { p_type: type });
@@ -436,6 +437,27 @@ export const useInventory = () => {
         return true;
     };
 
+    const handleProcessProductionVoucher = async (header: any, consumed_lines: any[], produced_lines: any[]): Promise<boolean> => {
+        const supabase = createSupabaseClient();
+        if (!supabase) return false;
+        const { error } = await supabase.rpc('process_production_voucher', { header_data: header, consumed_lines, produced_lines });
+        if (error) { addToast(`Üretim işlemi başarısız: ${error.message}`, 'error'); return false; }
+        addToast('Üretim işlemi başarılı.', 'success');
+        fetchData();
+        return true;
+    };
+    
+    const handleEditProductionVoucher = async (voucher_number: string, header: any, consumed_lines: any[], produced_lines: any[]): Promise<boolean> => {
+        const supabase = createSupabaseClient();
+        if (!supabase) return false;
+        const { error } = await supabase.rpc('edit_production_voucher', { p_voucher_number: voucher_number, header_data: header, consumed_lines, produced_lines });
+        if (error) { addToast(`Üretim fişi güncellenemedi: ${error.message}`, 'error'); return false; }
+        addToast('Üretim fişi başarıyla güncellendi.', 'success');
+        fetchData();
+        return true;
+    };
+
+
     const handleDeleteStockVoucher = async (voucher_number: string) => {
         const supabase = createSupabaseClient();
         if (!supabase) return;
@@ -458,6 +480,7 @@ export const useInventory = () => {
         handleAddWarehouseGroup, handleEditWarehouseGroup, handleDeleteWarehouseGroup,
         handleStockIn, handleStockOut, handleEditStockVoucher, handleDeleteStockVoucher,
         handleStockTransfer, handleEditStockTransfer,
+        handleProcessProductionVoucher, handleEditProductionVoucher,
         generateSku,
         getNextVoucherNumber,
         setGeneralSettings: handleSetGeneralSettings

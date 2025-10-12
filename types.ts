@@ -61,6 +61,8 @@ export interface GeneralSettings {
     stock_out_length: number;
     stock_transfer_prefix: string;
     stock_transfer_length: number;
+    production_prefix: string;
+    production_length: number;
 }
 
 
@@ -71,6 +73,8 @@ export interface StockItem {
   quantity: number;
 }
 
+export type TransactionType = 'STANDARD' | 'TRANSFER' | 'PRODUCTION';
+
 export interface StockMovement {
   id: string;
   voucher_number: string;
@@ -79,6 +83,7 @@ export interface StockMovement {
   warehouse_id: string;
   shelf_id: string | null;
   type: 'IN' | 'OUT';
+  transaction_type: TransactionType;
   date: string; // ISO 8601 format
   created_at: string; // ISO 8601 format
   updated_at: string; // ISO 8601 format
@@ -95,6 +100,7 @@ export type Page =
   | 'warehouse-groups'
   | 'accounts'
   | 'units'
+  | 'production-vouchers'
   | 'reports-movements'
   | 'reports-stock'
   | 'reports-inventory'
@@ -121,6 +127,8 @@ export type ModalType =
   | 'EDIT_PRODUCT_GROUP'
   | 'ADD_WAREHOUSE_GROUP'
   | 'EDIT_WAREHOUSE_GROUP'
+  | 'ADD_PRODUCTION_VOUCHER'
+  | 'EDIT_PRODUCTION_VOUCHER'
   | 'CONFIRM_DELETE'
   | null;
 
