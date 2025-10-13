@@ -8,6 +8,8 @@ import SearchableSelect from '../../components/SearchableSelect';
 import { formLabelClass, formInputSmallClass } from '../../styles/common';
 import { DownloadIcon, EraserIcon, ListIcon } from '../../components/icons';
 
+type SortConfig = { key: string; direction: 'ascending' | 'descending' };
+
 const InventoryReportPage: React.FC<{
     movements: StockMovement[];
     products: Product[];
@@ -42,7 +44,7 @@ const InventoryReportPage: React.FC<{
     const [availableWarehouses, setAvailableWarehouses] = useState<Warehouse[]>(warehouses);
     const [availableShelves, setAvailableShelves] = useState<Shelf[]>([]);
     const [exportFormat, setExportFormat] = useState<'excel' | 'csv'>('excel');
-    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' } | null>(null);
+    const [sortConfig, setSortConfig] = useState<SortConfig[]>([]);
     const { addToast } = useToast();
 
     const getUnitAbbr = (productId: string) => findById(units, findById(products, productId)?.unit_id)?.abbreviation || '';
@@ -186,18 +188,52 @@ const InventoryReportPage: React.FC<{
             exportToCsv(filename, sortedData);
         }
     }
+
+    const requestSort = (key: string, event: React.MouseEvent) => {
+        const isShiftPressed = event.shiftKey;
+
+        setSortConfig(currentConfigs => {
+            const existingConfigIndex = currentConfigs.findIndex(c => c.key === key);
+
+            if (isShiftPressed) {
+                const newConfigs = [...currentConfigs];
+                if (existingConfigIndex > -1) {
+                    if (newConfigs[existingConfigIndex].direction === 'ascending') {
+                        newConfigs[existingConfigIndex].direction = 'descending';
+                    } else {
+                        newConfigs.splice(existingConfigIndex, 1);
+                    }
+                } else {
+                    newConfigs.push({ key, direction: 'ascending' });
+                }
+                return newConfigs;
+            } else {
+                if (existingConfigIndex > -1) {
+                    if (currentConfigs[existingConfigIndex].direction === 'ascending') {
+                        return [{ key, direction: 'descending' }];
+                    } else {
+                        return [];
+                    }
+                } else {
+                    return [{ key, direction: 'ascending' }];
+                }
+            }
+        });
+    };
     
     const sortedData = useMemo(() => {
-        let sortableItems = [...displayedData];
-        if (sortConfig) {
-            sortableItems.sort((a, b) => {
-                const aValue = a[sortConfig.key];
-                const bValue = b[sortConfig.key];
+        if (sortConfig.length === 0) return displayedData;
+
+        return [...displayedData].sort((a, b) => {
+            for (const config of sortConfig) {
+                const { key, direction } = config;
+                const aValue = a[key];
+                const bValue = b[key];
                 
                 let valA: any = aValue;
                 let valB: any = bValue;
                 
-                if (sortConfig.key === 'Toplam Miktar') {
+                if (key === 'Toplam Miktar') {
                     const parseQuantity = (quantityString: string) => {
                         if (!quantityString) return 0;
                         const numberPart = String(quantityString).split(' ')[0];
@@ -208,25 +244,20 @@ const InventoryReportPage: React.FC<{
                     valB = parseQuantity(bValue);
                 }
 
+                let comparison = 0;
                 if (valA < valB) {
-                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                    comparison = -1;
+                } else if (valA > valB) {
+                    comparison = 1;
                 }
-                if (valA > valB) {
-                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                
+                if (comparison !== 0) {
+                    return direction === 'ascending' ? comparison : -comparison;
                 }
-                return 0;
-            });
-        }
-        return sortableItems;
+            }
+            return 0;
+        });
     }, [displayedData, sortConfig]);
-
-    const requestSort = (key: string) => {
-        let direction: 'ascending' | 'descending' = 'ascending';
-        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
-            direction = 'descending';
-        }
-        setSortConfig({ key, direction });
-    };
 
     const headers = ["Ürün Adı", "SKU", "Toplam Miktar"];
     const title = "Envanter Raporu";
@@ -308,14 +339,23 @@ const InventoryReportPage: React.FC<{
                         <table id="results-table" className="data-table w-full text-left">
                             <thead className="table-header">
                                 <tr className="border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
-                                    {headers.map(header => (
-                                        <th key={header} className="table-header-cell p-4 text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                                            <button onClick={() => requestSort(header)} className="sort-button w-full text-left flex items-center gap-1 hover:text-slate-800 dark:hover:text-slate-100">
-                                                {header}
-                                                {sortConfig?.key === header ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : null}
-                                            </button>
-                                        </th>
-                                    ))}
+                                    {headers.map(header => {
+                                        const sortInfo = sortConfig.find(sc => sc.key === header);
+                                        const sortIndex = sortInfo ? sortConfig.indexOf(sortInfo) + 1 : -1;
+                                        return (
+                                            <th key={header} className="table-header-cell p-4 text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                                                <button onClick={(e) => requestSort(header, e)} className="sort-button w-full text-left flex items-center gap-1 hover:text-slate-800 dark:hover:text-slate-100">
+                                                    {header}
+                                                    {sortInfo && (
+                                                        <span className="ml-1 flex items-center">
+                                                            {sortInfo.direction === 'ascending' ? '▲' : '▼'}
+                                                            {sortConfig.length > 1 && <sup className="ml-1 text-xs">{sortIndex}</sup>}
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            </th>
+                                        );
+                                    })}
                                 </tr>
                             </thead>
                             <tbody className="table-body">

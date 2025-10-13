@@ -8,6 +8,8 @@ import SearchableSelect from '../../components/SearchableSelect';
 import { formLabelClass, formInputSmallClass } from '../../styles/common';
 import { DownloadIcon,EraserIcon,ListIcon } from '../../components/icons';
 
+type SortConfig = { key: string; direction: 'ascending' | 'descending' };
+
 const StockLedgerReportPage: React.FC<{
     movements: StockMovement[];
     products: Product[];
@@ -51,7 +53,7 @@ const StockLedgerReportPage: React.FC<{
     const [availableProducts, setAvailableProducts] = useState<Product[]>(products);
     const [exportFormat, setExportFormat] = useState<'excel' | 'csv'>('excel');
     const { addToast } = useToast();
-    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' }>({ key: 'Sıralama', direction: 'ascending' });
+    const [sortConfig, setSortConfig] = useState<SortConfig[]>([{ key: 'Sıralama', direction: 'ascending' }]);
 
     const getUnitAbbr = (productId: string) => findById(units, findById(products, productId)?.unit_id)?.abbreviation || '';
     
@@ -213,7 +215,7 @@ const StockLedgerReportPage: React.FC<{
             const signedQuantity = m.type === 'IN' ? m.quantity : -m.quantity;
             runningBalance += signedQuantity;
             reportRows.push({
-                "Sıralama": new Date(m.date).getTime(),
+                "Sıralama": new Date(m.created_at).getTime(),
                 "Tarih": new Date(m.date).toLocaleDateString(),
                 "Fiş No": m.voucher_number,
                 "İşlem Türü": getTransactionDescription(m),
@@ -251,41 +253,71 @@ const StockLedgerReportPage: React.FC<{
         }
     }
     
+    const requestSort = (key: string, event: React.MouseEvent) => {
+        const isShiftPressed = event.shiftKey;
+
+        setSortConfig(currentConfigs => {
+            const existingConfigIndex = currentConfigs.findIndex(c => c.key === key);
+
+            if (isShiftPressed) {
+                const newConfigs = [...currentConfigs];
+                if (existingConfigIndex > -1) {
+                    if (newConfigs[existingConfigIndex].direction === 'ascending') {
+                        newConfigs[existingConfigIndex].direction = 'descending';
+                    } else {
+                        newConfigs.splice(existingConfigIndex, 1);
+                    }
+                } else {
+                    newConfigs.push({ key, direction: 'ascending' });
+                }
+                return newConfigs;
+            } else {
+                if (existingConfigIndex > -1) {
+                    if (currentConfigs[existingConfigIndex].direction === 'ascending') {
+                        return [{ key, direction: 'descending' }];
+                    } else {
+                        return [];
+                    }
+                } else {
+                    return [{ key, direction: 'ascending' }];
+                }
+            }
+        });
+    };
+    
     const sortedData = useMemo(() => {
-        let sortableItems = [...displayedData];
-        if (sortConfig.key) {
-            sortableItems.sort((a, b) => {
-                const aValue = a[sortConfig.key];
-                const bValue = b[sortConfig.key];
+        if (sortConfig.length === 0) return displayedData;
+
+        return [...displayedData].sort((a, b) => {
+            for (const config of sortConfig) {
+                const { key, direction } = config;
+                const aValue = a[key];
+                const bValue = b[key];
                 
                 let valA: any = aValue;
                 let valB: any = bValue;
                 
                 if (typeof valA === 'number' && typeof valB === 'number') {
+                     // It's already a number (like Sıralama, Miktar, Kalan), do nothing
                 } else {
                     valA = String(aValue).toLowerCase();
                     valB = String(bValue).toLowerCase();
                 }
 
+                let comparison = 0;
                 if (valA < valB) {
-                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                    comparison = -1;
+                } else if (valA > valB) {
+                    comparison = 1;
                 }
-                if (valA > valB) {
-                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                
+                if (comparison !== 0) {
+                    return direction === 'ascending' ? comparison : -comparison;
                 }
-                return 0;
-            });
-        }
-        return sortableItems;
+            }
+            return 0;
+        });
     }, [displayedData, sortConfig]);
-
-    const requestSort = (key: string) => {
-        let direction: 'ascending' | 'descending' = 'ascending';
-        if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-            direction = 'descending';
-        }
-        setSortConfig({ key, direction });
-    };
 
     const headers = ["Tarih", "Fiş No", "İşlem Türü", "Ürün Kodu", "Ürün Adı", "Miktar", "Kalan", "Birim", "Depo", "Raf", "İlgili Cari", "Not"];
     const title = "Stok Ekstresi";
@@ -442,16 +474,24 @@ const StockLedgerReportPage: React.FC<{
                         <table id="results-table" className="data-table w-full text-left text-sm">
                             <thead className="table-header">
                                 <tr className="border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
-                                    {headers.map(header => (
-                                        <th key={header} className="table-header-cell p-2 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                                            <button onClick={() => requestSort(header === 'Tarih' ? 'Sıralama' : header)} className="sort-button w-full text-left flex items-center gap-1 hover:text-slate-800 dark:hover:text-slate-100">
-                                                {header}
-                                                {(sortConfig.key === header || (header === 'Tarih' && sortConfig.key === 'Sıralama')) ? (
-                                                    sortConfig.direction === 'ascending' ? '▲' : '▼'
-                                                ) : null}
-                                            </button>
-                                        </th>
-                                    ))}
+                                    {headers.map(header => {
+                                        const sortKey = header === 'Tarih' ? 'Sıralama' : header;
+                                        const sortInfo = sortConfig.find(sc => sc.key === sortKey);
+                                        const sortIndex = sortInfo ? sortConfig.indexOf(sortInfo) + 1 : -1;
+                                        return (
+                                            <th key={header} className="table-header-cell p-2 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                                                <button onClick={(e) => requestSort(sortKey, e)} className="sort-button w-full text-left flex items-center gap-1 hover:text-slate-800 dark:hover:text-slate-100">
+                                                    {header}
+                                                    {sortInfo && (
+                                                        <span className="ml-1 flex items-center">
+                                                            {sortInfo.direction === 'ascending' ? '▲' : '▼'}
+                                                            {sortConfig.length > 1 && <sup className="ml-1 text-xs">{sortIndex}</sup>}
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            </th>
+                                        );
+                                    })}
                                 </tr>
                             </thead>
                             <tbody className="table-body">
