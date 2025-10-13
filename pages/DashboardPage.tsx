@@ -117,7 +117,7 @@ const DashboardPage: React.FC<{
                 </button>
             </div>
             <div id="recent-movements-section" className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow border dark:border-slate-700">
-                <h3 className="section-title text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Son Stok Hareketleri</h3>
+                <h3 className="section-title text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Son 20 Stok Hareketi</h3>
                 <div className="overflow-x-auto">
                     <table className="data-table w-full text-left">
                         <thead>
