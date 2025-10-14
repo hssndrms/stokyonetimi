@@ -353,6 +353,47 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
                     </fieldset>
                 </div>
 
+                 <div id="produced-products-section">
+                    <div className="flex justify-between items-center mb-2">
+                         <h3 className="section-title text-lg font-bold text-slate-800 dark:text-slate-100">Üretilen Ürünler (Girdi)</h3>
+                         <button id="add-produced-line-button" type="button" onClick={() => addLine('produced')} className="font-semibold py-1 px-3 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500"><PlusIcon /> Satır Ekle</button>
+                    </div>
+                    <div className="data-table-container border dark:border-slate-700 rounded-md">
+                        <table className="data-table w-full text-left text-sm min-w-[700px]">
+                            <thead className="table-header bg-slate-50 dark:bg-slate-700/50">
+                                <tr>
+                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[25%]">Ürün Grubu</th>
+                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Ürün Kodu</th>
+                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[30%]">Ürün Adı</th>
+                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%] text-right">Mevcut Stok</th>
+                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[10%]">Miktar</th>
+                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[5%]"></th>
+                                </tr>
+                            </thead>
+                            <tbody className="table-body">{producedLines.map(line => {
+                                const warehouseId = header.destWarehouseId;
+                                const shelfId = header.destShelfId;
+                                const stock = getStockInfo(line.productId, warehouseId, shelfId);
+                                return (
+                                    <LineRow
+                                        key={line.id}
+                                        line={line}
+                                        lineType="produced"
+                                        onLineChange={(id, field, value) => handleLineChange('produced', id, field, value)}
+                                        onRemove={(id) => removeLine('produced', id)}
+                                        isRemovalDisabled={producedLines.length <= 1}
+                                        productGroups={productGroups}
+                                        products={products}
+                                        getProductSku={getProductSku}
+                                        stockInfo={stock}
+                                        errors={errors}
+                                    />
+                                );
+                            })}</tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <div id="consumed-materials-section">
                     <div className="flex justify-between items-center mb-2">
                          <h3 className="section-title text-lg font-bold text-slate-800 dark:text-slate-100">Kullanılan Malzemeler (Gider)</h3>
@@ -399,46 +440,6 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
                     </div>
                 </div>
 
-                 <div id="produced-products-section">
-                    <div className="flex justify-between items-center mb-2">
-                         <h3 className="section-title text-lg font-bold text-slate-800 dark:text-slate-100">Üretilen Ürünler (Girdi)</h3>
-                         <button id="add-produced-line-button" type="button" onClick={() => addLine('produced')} className="font-semibold py-1 px-3 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500"><PlusIcon /> Satır Ekle</button>
-                    </div>
-                    <div className="data-table-container border dark:border-slate-700 rounded-md">
-                        <table className="data-table w-full text-left text-sm min-w-[700px]">
-                            <thead className="table-header bg-slate-50 dark:bg-slate-700/50">
-                                <tr>
-                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[25%]">Ürün Grubu</th>
-                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Ürün Kodu</th>
-                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[30%]">Ürün Adı</th>
-                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%] text-right">Mevcut Stok</th>
-                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[10%]">Miktar</th>
-                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[5%]"></th>
-                                </tr>
-                            </thead>
-                            <tbody className="table-body">{producedLines.map(line => {
-                                const warehouseId = header.destWarehouseId;
-                                const shelfId = header.destShelfId;
-                                const stock = getStockInfo(line.productId, warehouseId, shelfId);
-                                return (
-                                    <LineRow
-                                        key={line.id}
-                                        line={line}
-                                        lineType="produced"
-                                        onLineChange={(id, field, value) => handleLineChange('produced', id, field, value)}
-                                        onRemove={(id) => removeLine('produced', id)}
-                                        isRemovalDisabled={producedLines.length <= 1}
-                                        productGroups={productGroups}
-                                        products={products}
-                                        getProductSku={getProductSku}
-                                        stockInfo={stock}
-                                        errors={errors}
-                                    />
-                                );
-                            })}</tbody>
-                        </table>
-                    </div>
-                </div>
             </div>
 
              <div className="modal-actions flex justify-between items-center mt-6 pt-4 border-t dark:border-slate-700">

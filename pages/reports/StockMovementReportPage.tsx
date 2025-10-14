@@ -8,6 +8,8 @@ import SearchableSelect from '../../components/SearchableSelect';
 import { formLabelClass, formInputSmallClass } from '../../styles/common';
 import { DownloadIcon, EraserIcon, ListIcon } from '../../components/icons';
 
+type SortConfig = { key: string; direction: 'ascending' | 'descending' };
+
 const StockMovementReportPage: React.FC<{
     movements: StockMovement[];
     products: Product[];
@@ -50,7 +52,7 @@ const StockMovementReportPage: React.FC<{
     const [availableProducts, setAvailableProducts] = useState<Product[]>(products);
     const [exportFormat, setExportFormat] = useState<'excel' | 'csv'>('excel');
     const { addToast } = useToast();
-    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' }>({ key: 'Kayıt Zamanı', direction: 'descending' });
+    const [sortConfig, setSortConfig] = useState<SortConfig[]>([{ key: 'Kayıt Zamanı', direction: 'descending' }]);
 
     const getUnitAbbr = (productId: string) => findById(units, findById(products, productId)?.unit_id)?.abbreviation || '';
     
@@ -276,32 +278,63 @@ const StockMovementReportPage: React.FC<{
         setDisplayedData(finalReportData);
     };
 
+    const requestSort = (key: string, event: React.MouseEvent) => {
+        const isShiftPressed = event.shiftKey;
+
+        setSortConfig(currentConfigs => {
+            const existingConfigIndex = currentConfigs.findIndex(c => c.key === key);
+
+            if (isShiftPressed) {
+                const newConfigs = [...currentConfigs];
+                if (existingConfigIndex > -1) {
+                    if (newConfigs[existingConfigIndex].direction === 'ascending') {
+                        newConfigs[existingConfigIndex].direction = 'descending';
+                    } else {
+                        newConfigs.splice(existingConfigIndex, 1);
+                    }
+                } else {
+                    newConfigs.push({ key, direction: 'ascending' });
+                }
+                return newConfigs;
+            } else {
+                if (existingConfigIndex > -1) {
+                    if (currentConfigs[existingConfigIndex].direction === 'ascending') {
+                        return [{ key, direction: 'descending' }];
+                    } else {
+                        return [];
+                    }
+                } else {
+                    return [{ key, direction: 'ascending' }];
+                }
+            }
+        });
+    };
+
     const sortedData = useMemo(() => {
-        let sortableItems = [...displayedData];
-        if (sortConfig.key) {
-            sortableItems.sort((a, b) => {
-                const aValue = a[sortConfig.key];
-                const bValue = b[sortConfig.key];
+        if (sortConfig.length === 0) return displayedData;
+
+        return [...displayedData].sort((a, b) => {
+            for (const config of sortConfig) {
+                const { key, direction } = config;
+                const aValue = a[key];
+                const bValue = b[key];
                 
                 let valA: any = aValue;
                 let valB: any = bValue;
 
-                if (sortConfig.key === 'Miktar') {
+                if (key === 'Miktar') {
                     const parseQuantity = (quantityString: string) => {
                         if (!quantityString) return 0;
-                        // "1.234,56" -> "1234.56" for parseFloat
                         const cleanedNumber = String(quantityString).replace(/\./g, '').replace(',', '.');
                         return parseFloat(cleanedNumber) || 0;
                     }
                     valA = parseQuantity(aValue);
                     valB = parseQuantity(bValue);
-                } else if (sortConfig.key === 'Tarih' || sortConfig.key === 'Kayıt Zamanı' || sortConfig.key === 'Güncelleme Zamanı') {
+                } else if (key === 'Tarih' || key === 'Kayıt Zamanı' || key === 'Güncelleme Zamanı') {
                      const parseDateTime = (dateTimeStr: string) => {
                          if (!dateTimeStr || dateTimeStr === '-') return 0;
-                         // Handles 'D.M.YYYY, HH:mm:ss' and 'D/M/YYYY, HH:mm:ss'
                          const parts = dateTimeStr.split(/[, ]+/);
                          if (parts.length < 2) {
-                             // Handles only date 'D.M.YYYY' or 'D/M/YYYY'
                             const dateParts = dateTimeStr.split(/[./]/);
                             if (dateParts.length === 3) {
                                 return new Date(+dateParts[2], +dateParts[1] - 1, +dateParts[0]).getTime();
@@ -310,8 +343,9 @@ const StockMovementReportPage: React.FC<{
                          }
                          const dateParts = parts[0].split(/[./]/);
                          const timeParts = parts[1].split(':');
-                         if(dateParts.length === 3 && timeParts.length === 3) {
-                            return new Date(+dateParts[2], +dateParts[1] - 1, +dateParts[0], +timeParts[0], +timeParts[1], +timeParts[2]).getTime();
+                         if(dateParts.length === 3 && timeParts.length >= 2) {
+                            const seconds = timeParts.length > 2 ? +timeParts[2] : 0;
+                            return new Date(+dateParts[2], +dateParts[1] - 1, +dateParts[0], +timeParts[0], +timeParts[1], seconds).getTime();
                          }
                          return new Date(dateTimeStr).getTime() || 0;
                     }
@@ -319,25 +353,20 @@ const StockMovementReportPage: React.FC<{
                     valB = parseDateTime(bValue);
                 }
                 
+                let comparison = 0;
                 if (valA < valB) {
-                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                    comparison = -1;
+                } else if (valA > valB) {
+                    comparison = 1;
                 }
-                if (valA > valB) {
-                    return sortConfig.direction === 'ascending' ? 1 : -1;
-                }
-                return 0;
-            });
-        }
-        return sortableItems;
-    }, [displayedData, sortConfig]);
 
-    const requestSort = (key: string) => {
-        let direction: 'ascending' | 'descending' = 'ascending';
-        if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-            direction = 'descending';
-        }
-        setSortConfig({ key, direction });
-    };
+                if (comparison !== 0) {
+                    return direction === 'ascending' ? comparison : -comparison;
+                }
+            }
+            return 0;
+        });
+    }, [displayedData, sortConfig]);
 
     const handleExport = () => {
         if(sortedData.length === 0) {
@@ -468,16 +497,23 @@ const StockMovementReportPage: React.FC<{
                         <table id="results-table" className="data-table w-full text-left text-sm">
                             <thead className="table-header">
                                 <tr className="border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
-                                    {headers.map(header => (
-                                        <th key={header} className="table-header-cell p-2 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                                            <button onClick={() => requestSort(header)} className="sort-button w-full text-left flex items-center gap-1 hover:text-slate-800 dark:hover:text-slate-100">
-                                                {header}
-                                                {sortConfig.key === header ? (
-                                                    sortConfig.direction === 'ascending' ? '▲' : '▼'
-                                                ) : null}
-                                            </button>
-                                        </th>
-                                    ))}
+                                    {headers.map(header => {
+                                        const sortInfo = sortConfig.find(sc => sc.key === header);
+                                        const sortIndex = sortInfo ? sortConfig.indexOf(sortInfo) + 1 : -1;
+                                        return (
+                                            <th key={header} className="table-header-cell p-2 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                                                <button onClick={(e) => requestSort(header, e)} className="sort-button w-full text-left flex items-center gap-1 hover:text-slate-800 dark:hover:text-slate-100">
+                                                    {header}
+                                                    {sortInfo && (
+                                                        <span className="ml-1 flex items-center">
+                                                            {sortInfo.direction === 'ascending' ? '▲' : '▼'}
+                                                            {sortConfig.length > 1 && <sup className="ml-1 text-xs">{sortIndex}</sup>}
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            </th>
+                                        );
+                                    })}
                                 </tr>
                             </thead>
                             <tbody className="table-body">
