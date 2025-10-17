@@ -72,57 +72,67 @@ const SearchableSelect: React.FC<{
   error?: boolean;
 }> = ({ options, value, onChange, placeholder, disabled = false, error = false }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Find the selected option based on the incoming value prop
   const selectedOption = useMemo(() => options.find(o => o.id === value), [options, value]);
 
-  const filteredOptions = useMemo(() =>
-    options.filter(option =>
-      option.name?.toLowerCase().includes(searchTerm.toLowerCase())
-    ), [options, searchTerm]);
+  // This state is the single source of truth for the input's text content.
+  const [inputValue, setInputValue] = useState(selectedOption?.name || '');
+  
+  // This effect syncs the inputValue with the selectedOption when the dropdown is closed.
+  // This handles cases where the `value` prop changes from the parent, or when the user clicks away,
+  // reverting the input to the currently selected value's name.
+  useEffect(() => {
+    if (!isOpen) {
+      setInputValue(selectedOption?.name || '');
+    }
+  }, [selectedOption, isOpen]);
+
+
+  const filteredOptions = useMemo(() => {
+    // Only filter if the dropdown is open. Otherwise, the list can be empty.
+    if (!isOpen) return [];
+    
+    // If inputValue is the same as the selected option name, it means the user just clicked
+    // the input but hasn't typed yet. In this case, show all options for better UX.
+    if (inputValue === selectedOption?.name) {
+      return options;
+    }
+
+    return options.filter(option =>
+      option.name?.toLowerCase().includes(inputValue.toLowerCase())
+    );
+  }, [options, inputValue, isOpen, selectedOption]);
   
   const handleSelect = (optionId: string) => {
-  const selected = options.find(o => o.id === optionId);
-  if (selected) setSearchTerm(selected.name || '');
-  onChange(optionId);
-  // Bir sonraki render frame’de kapansın, UI yumuşar
-  requestAnimationFrame(() => setIsOpen(false));
-  inputRef.current?.blur();
-};
-
-
-  useEffect(() => {
-    // When dropdown is closed, clear search term to show selected value
-    if (!isOpen) {
-        setSearchTerm('');
-    }
-  }, [isOpen]);
+    const option = options.find(o => o.id === optionId);
+    setInputValue(option?.name || ''); // Explicitly set the display value
+    onChange(optionId); // Notify parent of the change
+    setIsOpen(false); // Close the dropdown
+    inputRef.current?.blur(); // Unfocus the input
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSearchTerm(e.target.value);
-      if(!isOpen) setIsOpen(true);
+      setInputValue(e.target.value);
+      if (!isOpen) setIsOpen(true);
   }
   
   const handleFocus = () => {
     if (disabled) return;
-    // On focus, show full name for editing, then open dropdown
-    setSearchTerm(selectedOption?.name || '');
     setIsOpen(true);
   };
 
   const closeDropdown = () => {
       setIsOpen(false);
   };
-
-  const displayValue = isOpen ? searchTerm : (selectedOption?.name || '');
   
   return (
     <div className="relative">
       <input
         ref={inputRef}
         type="text"
-        value={displayValue}
+        value={inputValue} // The input is now fully controlled by the `inputValue` state.
         onChange={handleInputChange}
         onFocus={handleFocus}
         placeholder={placeholder}
