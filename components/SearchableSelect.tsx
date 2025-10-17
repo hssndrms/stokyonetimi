@@ -83,9 +83,14 @@ const SearchableSelect: React.FC<{
     ), [options, searchTerm]);
   
   const handleSelect = (optionId: string) => {
-    onChange(optionId);
-    setIsOpen(false);
-  };
+  const selected = options.find(o => o.id === optionId);
+  if (selected) setSearchTerm(selected.name || '');
+  onChange(optionId);
+  // Bir sonraki render frame’de kapansın, UI yumuşar
+  requestAnimationFrame(() => setIsOpen(false));
+  inputRef.current?.blur();
+};
+
 
   useEffect(() => {
     // When dropdown is closed, clear search term to show selected value

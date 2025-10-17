@@ -136,14 +136,14 @@ const DashboardPage: React.FC<{
                             {sortedRecentMovements.map(m => (
                                 <tr key={m.id} className="table-row border-b dark:border-slate-700">
                                     <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-300">{new Date(m.date).toLocaleDateString()}</td>
-                                    <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-300 font-mono">{m.voucher_number}</td>
+                                    <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-300">{m.voucher_number}</td>
                                     <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-300">{m.productName}</td>
                                     <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-300">
                                         <span className={`status-badge px-2.5 py-1 text-xs font-semibold rounded-full ${m.type === 'IN' ? 'bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-800/30 dark:text-red-200'}`}>
                                             {m.type === 'IN' ? 'GİRİŞ' : 'ÇIKIŞ'}
                                         </span>
                                     </td>
-                                    <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-200 font-medium">{formatNumber(m.quantity)}</td>
+                                    <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-200 font-medium text-right">{formatNumber(m.quantity)}</td>
                                 </tr>
                             ))}
                         </tbody>

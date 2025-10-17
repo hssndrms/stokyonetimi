@@ -526,7 +526,7 @@ const StockMovementReportPage: React.FC<{
                                                     {header === 'Fiş No' ? (
                                                         <button 
                                                             onClick={() => handleVoucherClick(cellValue)}
-                                                            className="voucher-link font-mono text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline"
+                                                            className="voucher-linktext-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline"
                                                         >
                                                             {cellValue}
                                                         </button>

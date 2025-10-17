@@ -91,6 +91,13 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
 
     const [availableSourceShelves, setAvailableSourceShelves] = useState<Shelf[]>([]);
     const [availableDestShelves, setAvailableDestShelves] = useState<Shelf[]>([]);
+
+    const getUnitAbbrForProduct = (productId: string): string => {
+        const product = findById(products, productId);
+        if (!product) return '';
+        const unit = findById(units, product.unit_id);
+        return unit?.abbreviation || '';
+    };
     
     useEffect(() => {
         const fetchVoucherNumber = async () => {
@@ -107,16 +114,22 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
     useEffect(() => {
         const shelvesForWarehouse = header.sourceWarehouseId ? shelves.filter(s => s.warehouse_id === header.sourceWarehouseId) : [];
         setAvailableSourceShelves(shelvesForWarehouse);
-        setConsumedLines(ls => ls.map(l => ({...l, shelfId: ''})));
     }, [header.sourceWarehouseId, shelves]);
 
     useEffect(() => {
         const shelvesForWarehouse = header.destWarehouseId ? shelves.filter(s => s.warehouse_id === header.destWarehouseId) : [];
         setAvailableDestShelves(shelvesForWarehouse);
-        setProducedLines(ls => ls.map(l => ({...l, shelfId: ''})));
     }, [header.destWarehouseId, shelves]);
 
-    const handleHeaderChange = (field: keyof Header, value: string) => setHeader(h => ({ ...h, [field]: value }));
+    const handleHeaderChange = (field: keyof Header, value: string) => {
+        setHeader(h => ({ ...h, [field]: value }));
+        if (field === 'sourceWarehouseId') {
+            setConsumedLines(ls => ls.map(l => ({...l, shelfId: ''})));
+        }
+        if (field === 'destWarehouseId') {
+            setProducedLines(ls => ls.map(l => ({...l, shelfId: ''})));
+        }
+    };
 
     const handleLineChange = (lineType: 'consumed' | 'produced', id: number | string, field: keyof Omit<Line, 'id'>, value: string) => {
         const setLines = lineType === 'consumed' ? setConsumedLines : setProducedLines;
@@ -248,23 +261,42 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
         
         const shelvesForLine = (() => {
             if (lineType === 'produced') return availableShelves;
+            
+            // Tüketilen malzemeler için, sadece stoğu olan rafları göster
             if (!line.productId || !header.sourceWarehouseId) return [];
+            
             const shelfIdsWithStock = stockItems
                 .filter(si => si.product_id === line.productId && si.warehouse_id === header.sourceWarehouseId && si.quantity > 0 && si.shelf_id)
                 .map(si => si.shelf_id);
-            return shelves.filter(shelf => shelfIdsWithStock.includes(shelf.id));
+            
+            const shelvesWithStock = shelves.filter(shelf => shelf.warehouse_id === header.sourceWarehouseId && shelfIdsWithStock.includes(shelf.id));
+
+            // Düzenleme modunda, stoğu bitmiş olsa bile önceden seçili rafı listeye ekle
+            if (isEditMode && line.shelfId && !shelvesWithStock.some(s => s.id === line.shelfId)) {
+                const savedShelf = findById(shelves, line.shelfId);
+                if (savedShelf && savedShelf.warehouse_id === header.sourceWarehouseId) {
+                    return Array.from(new Set([...shelvesWithStock, savedShelf]));
+                }
+            }
+            
+            return shelvesWithStock;
         })();
 
         return (
             <tr className="table-row border-t dark:border-slate-700">
                 <td className="p-2 w-[20%]"><SearchableSelect options={productGroups} value={line.productGroupId} onChange={val => onLineChange(line.id, 'productGroupId', val)} placeholder="Grup Seçin" /></td>
                 <td className="p-2 w-[15%]"><input type="text" value={getProductSku(line.productId)} className={`${formInputSmallClass} bg-slate-100 dark:bg-slate-700 font-mono`} readOnly /></td>
-                <td className="p-2 w-[25%]"><SearchableSelect options={line.productGroupId ? products.filter(p => p.group_id === line.productGroupId) : []} value={line.productId} onChange={val => onLineChange(line.id, 'productId', val)} placeholder="Ürün Seçin" disabled={!line.productGroupId} error={errors[lineType]?.[line.id]?.productId} /></td>
+                <td className="p-2 w-[20%]"><SearchableSelect options={line.productGroupId ? products.filter(p => p.group_id === line.productGroupId) : []} value={line.productId} onChange={val => onLineChange(line.id, 'productId', val)} placeholder="Ürün Seçin" disabled={!line.productGroupId} error={errors[lineType]?.[line.id]?.productId} /></td>
                 <td className="p-2 w-[15%]">
                      <SearchableSelect options={shelvesForLine} value={line.shelfId} onChange={val => onLineChange(line.id, 'shelfId', val)} placeholder={availableShelves.length > 0 ? "Raf Seçin" : "Raf Bulunmuyor"} disabled={availableShelves.length === 0} error={errors[lineType]?.[line.id]?.shelfId}/>
                 </td>
                 <td className="p-2 w-[10%] text-slate-600 dark:text-slate-400 font-medium text-right">{getStockInfo(line.productId, lineType === 'consumed' ? header.sourceWarehouseId : header.destWarehouseId, line.shelfId)}</td>
-                <td className="p-2 w-[10%]"><input type="number" step="any" min="0.01" value={line.quantity} onChange={e => onLineChange(line.id, 'quantity', e.target.value)} className={`${formInputSmallClass} ${errors[lineType]?.[line.id]?.quantity ? 'border-red-500' : ''}`} /></td>
+                <td className="p-2 w-[15%]">
+                     <div className="flex items-center">
+                        <input type="number" step="any" min="0.01" value={line.quantity} onChange={e => onLineChange(line.id, 'quantity', e.target.value)} className={`${formInputSmallClass} ${errors[lineType]?.[line.id]?.quantity ? 'border-red-500' : ''} w-full text-right`} />
+                        <span className="text-sm text-slate-500 dark:text-slate-400 font-medium pl-2 w-12 text-left">{getUnitAbbrForProduct(line.productId)}</span>
+                    </div>
+                </td>
                 <td className="p-2 w-[5%] text-center"><button type="button" onClick={() => onRemove(line.id)} className="remove-line-button text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400 disabled:text-slate-300 dark:disabled:text-slate-600" disabled={isRemovalDisabled}><TrashIcon /></button></td>
             </tr>
         );
@@ -292,7 +324,7 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
                         <table className="data-table w-full text-left text-sm min-w-[900px]">
                             <thead className="table-header bg-slate-50 dark:bg-slate-700/50">
                                 <tr>
-                                    <th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[20%]">Ürün Grubu</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Ürün Kodu</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[25%]">Ürün Adı</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Raf</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[10%] text-right">Mevcut Stok</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[10%]">Miktar</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[5%]"></th>
+                                    <th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[20%]">Ürün Grubu</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Ürün Kodu</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[20%]">Ürün Adı</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Raf</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[10%] text-right">Mevcut Stok</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Miktar</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[5%]"></th>
                                 </tr>
                             </thead>
                             <tbody className="table-body">{producedLines.map(line => (
@@ -315,7 +347,7 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
                         <table className="data-table w-full text-left text-sm min-w-[900px]">
                             <thead className="table-header bg-slate-50 dark:bg-slate-700/50">
                                 <tr>
-                                    <th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[20%]">Ürün Grubu</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Ürün Kodu</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[25%]">Ürün Adı</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Raf</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[10%] text-right">Mevcut Stok</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[10%]">Miktar</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[5%]"></th>
+                                    <th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[20%]">Ürün Grubu</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Ürün Kodu</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[20%]">Ürün Adı</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Raf</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[10%] text-right">Mevcut Stok</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Miktar</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[5%]"></th>
                                 </tr>
                             </thead>
                             <tbody className="table-body">{consumedLines.map(line => (

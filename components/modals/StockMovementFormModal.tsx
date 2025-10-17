@@ -100,6 +100,13 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
 
     const availableAccounts = useMemo(() => accounts.filter(a => a.type === accountType), [accountType, accounts]);
     const selectedAccount = useMemo(() => accounts.find(a => a.id === header.accountId), [header.accountId, accounts]);
+    
+    const getUnitAbbrForProduct = (productId: string): string => {
+        const product = findById(products, productId);
+        if (!product) return '';
+        const unit = findById(units, product.unit_id);
+        return unit?.abbreviation || '';
+    };
 
     useEffect(() => {
         const fetchVoucherNumber = async () => {
@@ -117,10 +124,7 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
     useEffect(() => {
         const shelvesForWarehouse = header.warehouseId ? shelves.filter(s => s.warehouse_id === header.warehouseId) : [];
         setAvailableShelves(shelvesForWarehouse);
-        if (header.warehouseId) {
-             // Reset shelfId on lines if warehouse changes
-            setLines(ls => ls.map(l => ({...l, shelfId: ''})));
-        } else {
+        if (!header.warehouseId) {
             setShowStock(false);
         }
     }, [header.warehouseId, shelves]);
@@ -133,6 +137,12 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
 
     const handleHeaderChange = (field: keyof typeof header, value: string) => {
         setHeader(h => ({ ...h, [field]: value }));
+
+        if (field === 'warehouseId') {
+            // Reset shelfId on lines if warehouse changes
+            setLines(ls => ls.map(l => ({...l, shelfId: ''})));
+        }
+
         if (errors.header?.[field]) {
             setErrors(prev => ({ ...prev, header: { ...prev.header, [field]: false } }));
         }
@@ -341,10 +351,10 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
                             <tr>
                                 <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[20%]">Ürün Grubu</th>
                                 <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Ürün Kodu</th>
-                                <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[25%]">Ürün Adı</th>
+                                <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[20%]">Ürün Adı</th>
                                 <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Raf</th>
                                 <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[10%]">Mevcut Stok</th>
-                                <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[10%]">Miktar</th>
+                                <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Miktar</th>
                                 <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[5%]"></th>
                             </tr>
                         </thead>
@@ -356,12 +366,23 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
                                 const shelvesForLine = (() => {
                                     if (voucherType === 'IN') return availableShelves;
                                     
-                                    // For stock OUT, filter shelves that contain the product
+                                    // Stok çıkışı için, ürünü içeren rafları filtrele
                                     if (!line.productId || !header.warehouseId) return [];
                                     const shelfIdsWithStock = stockItems
                                         .filter(si => si.product_id === line.productId && si.warehouse_id === header.warehouseId && si.quantity > 0 && si.shelf_id)
                                         .map(si => si.shelf_id);
-                                    return shelves.filter(shelf => shelfIdsWithStock.includes(shelf.id));
+                                    
+                                    const shelvesWithStock = shelves.filter(shelf => shelf.warehouse_id === header.warehouseId && shelfIdsWithStock.includes(shelf.id));
+                                
+                                    // Düzenleme modunda, stoğu bitmiş olsa bile önceden seçili rafı listeye ekle
+                                    if (isEditMode && line.shelfId && !shelvesWithStock.some(s => s.id === line.shelfId)) {
+                                        const savedShelf = findById(shelves, line.shelfId);
+                                        if (savedShelf && savedShelf.warehouse_id === header.warehouseId) {
+                                            return Array.from(new Set([...shelvesWithStock, savedShelf]));
+                                        }
+                                    }
+                                    
+                                    return shelvesWithStock;
                                 })();
 
                                 return (
@@ -380,7 +401,12 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
                                             />
                                         </td>
                                         <td className="table-cell p-2 align-middle text-slate-600 dark:text-slate-400 font-medium">{getStockInfo(line.productId, header.warehouseId, line.shelfId)}</td>
-                                        <td className="table-cell p-2 align-middle"><input type="number" step="any" min="0.0001" value={line.quantity} onChange={e => handleLineChange(line.id, 'quantity', e.target.value)} className={`${formInputSmallClass} ${errors.lines?.[line.id]?.quantity ? 'border-red-500' : ''}`} /></td>
+                                        <td className="table-cell p-2 align-middle">
+                                             <div className="flex items-center">
+                                                <input type="number" step="any" min="0.0001" value={line.quantity} onChange={e => handleLineChange(line.id, 'quantity', e.target.value)} className={`${formInputSmallClass} ${errors.lines?.[line.id]?.quantity ? 'border-red-500' : ''} w-full text-right`} />
+                                                <span className="text-sm text-slate-500 dark:text-slate-400 font-medium pl-2 w-12 text-left">{getUnitAbbrForProduct(line.productId)}</span>
+                                            </div>
+                                        </td>
                                         <td className="table-cell p-2 text-center align-middle">
                                             <button type="button" onClick={() => removeLine(line.id)} className="remove-line-button text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400 disabled:text-slate-300 dark:disabled:text-slate-600" disabled={lines.length <= 1}><TrashIcon /></button>
                                         </td>

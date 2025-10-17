@@ -403,7 +403,7 @@ const StockLedgerReportPage: React.FC<{
                                 className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-slate-900"
                             />
                             <label htmlFor="listWarehouseDetail" className="ml-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-                                Depo Detayı Listelensin
+                                Depo Detayı Filtresi
                             </label>
                         </div>
                         <div className="flex items-center">
@@ -423,7 +423,7 @@ const StockLedgerReportPage: React.FC<{
                                 disabled={!filters.listWarehouseDetail}
                             />
                             <label htmlFor="listShelfDetail" className="ml-2 text-sm font-medium text-slate-700 dark:text-slate-300 disabled:text-slate-400 dark:disabled:text-slate-500">
-                                Raf Detayı Listelensin
+                                Raf Detayı Filtresi
                             </label>
                         </div>
                     </div>
@@ -501,7 +501,7 @@ const StockLedgerReportPage: React.FC<{
                                             let cellValue = row[header];
                                             let cellClass = "table-cell p-2 align-middle text-slate-700 dark:text-slate-300 text-xs";
                                             if (header === 'Miktar' || header === 'Kalan') {
-                                                cellClass += " text-right font-mono";
+                                                cellClass += " text-right";
                                                 cellValue = formatNumber(cellValue);
                                             }
                                             return (
@@ -509,7 +509,7 @@ const StockLedgerReportPage: React.FC<{
                                                     {header === 'Fiş No' ? (
                                                         <button 
                                                             onClick={() => handleVoucherClick(cellValue)}
-                                                            className="voucher-link font-mono text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline disabled:text-slate-500 dark:disabled:text-slate-400 disabled:no-underline disabled:cursor-default"
+                                                            className="voucher-link text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline disabled:text-slate-500 dark:disabled:text-slate-400 disabled:no-underline disabled:cursor-default"
                                                             disabled={cellValue === 'DEVİR'}
                                                         >
                                                             {cellValue}

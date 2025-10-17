@@ -81,6 +81,13 @@ const StockTransferFormModal: React.FC<StockTransferFormModalProps> = ({ isEdit,
     const [availableDestShelves, setAvailableDestShelves] = useState<Shelf[]>([]);
     const [showStock, setShowStock] = useState(false);
     
+    const getUnitAbbrForProduct = (productId: string): string => {
+        const product = findById(products, productId);
+        if (!product) return '';
+        const unit = findById(units, product.unit_id);
+        return unit?.abbreviation || '';
+    };
+
     useEffect(() => {
         const fetchVoucherNumber = async () => {
             if (isEditMode) {
@@ -97,17 +104,23 @@ const StockTransferFormModal: React.FC<StockTransferFormModalProps> = ({ isEdit,
     useEffect(() => {
         const shelvesForWarehouse = header.sourceWarehouseId ? shelves.filter(s => s.warehouse_id === header.sourceWarehouseId) : [];
         setAvailableSourceShelves(shelvesForWarehouse);
-        setLines(ls => ls.map(l => ({...l, sourceShelfId: ''})));
     }, [header.sourceWarehouseId, shelves]);
     
     useEffect(() => {
         const shelvesForWarehouse = header.destWarehouseId ? shelves.filter(s => s.warehouse_id === header.destWarehouseId) : [];
         setAvailableDestShelves(shelvesForWarehouse);
-        setLines(ls => ls.map(l => ({...l, destShelfId: ''})));
     }, [header.destWarehouseId, shelves]);
 
     const handleHeaderChange = (field: keyof typeof header, value: string) => {
         setHeader(h => ({ ...h, [field]: value }));
+
+        if (field === 'sourceWarehouseId') {
+            setLines(ls => ls.map(l => ({...l, sourceShelfId: ''})));
+        }
+        if (field === 'destWarehouseId') {
+            setLines(ls => ls.map(l => ({...l, destShelfId: ''})));
+        }
+
          if (errors.header?.[field]) {
             setErrors(prev => ({ ...prev, header: { ...prev.header, [field]: false } }));
         }
@@ -188,7 +201,7 @@ const StockTransferFormModal: React.FC<StockTransferFormModalProps> = ({ isEdit,
         const validLines = lines.filter(l => l.productId && parseFloat(l.quantity) > 0);
         if (Object.values(newErrors.header!).some(v => v) || Object.keys(newErrors.lines!).length > 0 || validLines.length === 0) {
             setErrors(newErrors);
-            addToast('Lütfen tüm zorunlu alanları doldurun ve geçerli değerler girin.', 'error');
+            addToast('Lütfen tüm zorunlu alanları doğru şekilde doldurun ve geçerli değerler girin.', 'error');
             return;
         }
 
@@ -272,11 +285,11 @@ const StockTransferFormModal: React.FC<StockTransferFormModalProps> = ({ isEdit,
                             <tr>
                                 <th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[18%]">Ürün Grubu</th>
                                 <th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[12%]">Ürün Kodu</th>
-                                <th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[20%]">Ürün Adı</th>
+                                <th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[16%]">Ürün Adı</th>
                                 <th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[12%]">Kaynak Raf</th>
                                 <th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[12%]">Hedef Raf</th>
                                 <th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[10%]">Kaynak Stok</th>
-                                <th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[8%]">Miktar</th>
+                                <th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[12%]">Miktar</th>
                                 <th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[5%]"></th>
                             </tr>
                         </thead>
@@ -287,7 +300,16 @@ const StockTransferFormModal: React.FC<StockTransferFormModalProps> = ({ isEdit,
                                     const shelfIdsWithStock = stockItems
                                         .filter(si => si.product_id === line.productId && si.warehouse_id === header.sourceWarehouseId && si.quantity > 0 && si.shelf_id)
                                         .map(si => si.shelf_id);
-                                    return shelves.filter(shelf => shelfIdsWithStock.includes(shelf.id));
+                                    
+                                    const shelvesWithStock = shelves.filter(shelf => shelf.warehouse_id === header.sourceWarehouseId && shelfIdsWithStock.includes(shelf.id));
+
+                                    if (isEditMode && line.sourceShelfId && !shelvesWithStock.some(s => s.id === line.sourceShelfId)) {
+                                        const savedShelf = findById(shelves, line.sourceShelfId);
+                                        if (savedShelf && savedShelf.warehouse_id === header.sourceWarehouseId) {
+                                             return Array.from(new Set([...shelvesWithStock, savedShelf]));
+                                        }
+                                    }
+                                    return shelvesWithStock;
                                 })();
 
                                 return (
@@ -302,7 +324,12 @@ const StockTransferFormModal: React.FC<StockTransferFormModalProps> = ({ isEdit,
                                          <SearchableSelect options={availableDestShelves} value={line.destShelfId} onChange={val => handleLineChange(line.id, 'destShelfId', val)} placeholder={availableDestShelves.length > 0 ? "Raf Seçin" : "Raf Bulunmuyor"} disabled={availableDestShelves.length === 0} error={!!errors.lines?.[line.id]?.destShelfId}/>
                                     </td>
                                     <td className="p-2 align-middle text-slate-600 dark:text-slate-400 font-medium">{getStockInfo(line.productId, line.sourceShelfId)}</td>
-                                    <td className="p-2"><input type="number" step="any" min="0.0001" value={line.quantity} onChange={e => handleLineChange(line.id, 'quantity', e.target.value)} className={`${formInputSmallClass} ${errors.lines?.[line.id]?.quantity ? 'border-red-500' : ''}`} /></td>
+                                    <td className="p-2">
+                                        <div className="flex items-center">
+                                            <input type="number" step="any" min="0.0001" value={line.quantity} onChange={e => handleLineChange(line.id, 'quantity', e.target.value)} className={`${formInputSmallClass} ${errors.lines?.[line.id]?.quantity ? 'border-red-500' : ''} w-full text-right`} />
+                                            <span className="text-sm text-slate-500 dark:text-slate-400 font-medium pl-2 w-12 text-left">{getUnitAbbrForProduct(line.productId)}</span>
+                                        </div>
+                                    </td>
                                     <td className="p-2 text-center"><button type="button" onClick={() => removeLine(line.id)} className="remove-line-button text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400 disabled:text-slate-300 dark:disabled:text-slate-600" disabled={lines.length <= 1}><TrashIcon /></button></td>
                                 </tr>
                             )})}

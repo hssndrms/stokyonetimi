@@ -168,7 +168,8 @@ const InventoryReportPage: React.FC<{
             return {
                 "Ürün Adı": item.product.name,
                 "SKU": item.product.sku,
-                "Toplam Miktar": `${formatNumber(item.quantity)} ${getUnitAbbr(item.product.id)}`,
+                "Toplam Miktar": item.quantity,
+                "Birim": getUnitAbbr(item.product.id),
             };
         };
 
@@ -182,10 +183,15 @@ const InventoryReportPage: React.FC<{
         }
 
         const filename = `Envanter_Raporu_${new Date().toISOString().slice(0,10)}`;
+        const dataToExport = sortedData.map(row => ({
+            ...row,
+            "Toplam Miktar": formatNumber(row["Toplam Miktar"])
+        }));
+
         if (exportFormat === 'excel') {
-            exportToExcel(filename, sortedData);
+            exportToExcel(filename, dataToExport);
         } else {
-            exportToCsv(filename, sortedData);
+            exportToCsv(filename, dataToExport);
         }
     }
 
@@ -233,17 +239,6 @@ const InventoryReportPage: React.FC<{
                 let valA: any = aValue;
                 let valB: any = bValue;
                 
-                if (key === 'Toplam Miktar') {
-                    const parseQuantity = (quantityString: string) => {
-                        if (!quantityString) return 0;
-                        const numberPart = String(quantityString).split(' ')[0];
-                        const cleanedNumber = numberPart.replace(/\./g, '').replace(',', '.');
-                        return parseFloat(cleanedNumber) || 0;
-                    }
-                    valA = parseQuantity(aValue);
-                    valB = parseQuantity(bValue);
-                }
-
                 let comparison = 0;
                 if (valA < valB) {
                     comparison = -1;
@@ -259,7 +254,7 @@ const InventoryReportPage: React.FC<{
         });
     }, [displayedData, sortConfig]);
 
-    const headers = ["Ürün Adı", "SKU", "Toplam Miktar"];
+    const headers = ["Ürün Adı", "SKU", "Toplam Miktar", "Birim"];
     const title = "Envanter Raporu";
 
     return (
@@ -336,7 +331,7 @@ const InventoryReportPage: React.FC<{
                 </div>
                 {displayedData.length > 0 ? (
                     <div className="overflow-x-auto">
-                        <table id="results-table" className="data-table w-full text-left">
+                        <table id="results-table" className="data-table w-full text-left text-sm">
                             <thead className="table-header">
                                 <tr className="border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
                                     {headers.map(header => {
@@ -361,9 +356,18 @@ const InventoryReportPage: React.FC<{
                             <tbody className="table-body">
                                 {sortedData.map((row, rowIndex) => (
                                     <tr key={rowIndex} className="table-row border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                                        {Object.values(row).map((cell: any, cellIndex) => (
-                                            <td key={cellIndex} className="table-cell p-4 align-middle text-slate-700 dark:text-slate-300">{cell}</td>
-                                        ))}
+                                        {headers.map(header => {
+                                            const cellValue = row[header];
+                                            let className = "table-cell p-4 align-middle text-slate-700 dark:text-slate-300";
+                                            if (header === 'Toplam Miktar') {
+                                                className += " text-right";
+                                            }
+                                            return (
+                                                <td key={header} className={className}>
+                                                    {header === 'Toplam Miktar' ? formatNumber(cellValue) : cellValue}
+                                                </td>
+                                            );
+                                        })}
                                     </tr>
                                 ))}
                             </tbody>
