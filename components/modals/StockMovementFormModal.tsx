@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Shelf, AccountType, StockItem, Unit, ModalState } from '../../types';
+import { Shelf, AccountType, StockItem, Unit, ModalState, Product } from '../../types';
 import { useToast } from '../../context/ToastContext';
 import { PlusIcon, TrashIcon } from '../icons';
 import SearchableSelect from '../SearchableSelect';
 import { formLabelClass, formInputSmallClass } from '../../styles/common';
 import { ModalComponentProps } from './ModalComponentProps';
-import { formatNumber } from '../../utils/helpers';
+import { formatNumber, findById } from '../../utils/helpers';
 
-type Line = { id: number, productGroupId: string, productId: string, quantity: string };
-type Header = { date: string, warehouseId: string, shelfId: string, accountId: string, notes: string };
+type Line = { id: number, productGroupId: string, productId: string, quantity: string, shelfId: string };
+type Header = { date: string, warehouseId: string, accountId: string, notes: string };
 
 interface StockMovementFormModalProps extends ModalComponentProps<{ 
     voucher_number?: string,
@@ -35,7 +35,6 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
                 return {
                     date: new Date(firstMovement.date).toISOString().slice(0, 10),
                     warehouseId: firstMovement.warehouse_id,
-                    shelfId: firstMovement.shelf_id || '',
                     accountId: account?.id || '',
                     notes: firstMovement.notes || '',
                 };
@@ -44,7 +43,6 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
         return {
             date: new Date().toISOString().slice(0, 10),
             warehouseId: '',
-            shelfId: '',
             accountId: '',
             notes: '',
         };
@@ -62,17 +60,18 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
                         id: Date.now() + Math.random(),
                         productGroupId: product?.group_id || '',
                         productId: m.product_id,
-                        quantity: String(m.quantity)
+                        quantity: String(m.quantity),
+                        shelfId: m.shelf_id || '',
                     };
                 });
             }
         }
-        return [{ id: Date.now(), productGroupId: '', productId: '', quantity: '1' }];
+        return [{ id: Date.now(), productGroupId: '', productId: '', quantity: '1', shelfId: '' }];
     });
     
     type FormErrors = {
-        header?: { date?: boolean, warehouseId?: boolean, shelfId?: boolean, accountId?: boolean },
-        lines?: { [id: number]: { productGroupId?: boolean, productId?: boolean, quantity?: boolean } }
+        header?: { date?: boolean, warehouseId?: boolean, accountId?: boolean },
+        lines?: { [id: number]: { productGroupId?: boolean, productId?: boolean, quantity?: boolean, shelfId?: boolean } }
     };
     const [errors, setErrors] = useState<FormErrors>({});
 
@@ -119,12 +118,9 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
         const shelvesForWarehouse = header.warehouseId ? shelves.filter(s => s.warehouse_id === header.warehouseId) : [];
         setAvailableShelves(shelvesForWarehouse);
         if (header.warehouseId) {
-            const currentShelf = shelves.find(s => s.id === header.shelfId);
-            if (currentShelf && currentShelf.warehouse_id !== header.warehouseId) {
-                setHeader(h => ({ ...h, shelfId: '' }));
-            }
+             // Reset shelfId on lines if warehouse changes
+            setLines(ls => ls.map(l => ({...l, shelfId: ''})));
         } else {
-            setHeader(h => ({ ...h, shelfId: '' }));
             setShowStock(false);
         }
     }, [header.warehouseId, shelves]);
@@ -142,11 +138,17 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
         }
     };
 
-    const handleLineChange = (id: number, field: 'productGroupId' | 'productId' | 'quantity', value: string) => {
+    const handleLineChange = (id: number, field: keyof Omit<Line, 'id'>, value: string) => {
         setLines(ls => ls.map(l => {
             if (l.id === id) {
                 const updatedLine = { ...l, [field]: value };
-                if (field === 'productGroupId') updatedLine.productId = '';
+                if (field === 'productGroupId') {
+                    updatedLine.productId = '';
+                    updatedLine.shelfId = ''; // Reset shelf when group changes
+                }
+                if (field === 'productId') {
+                    updatedLine.shelfId = ''; // Reset shelf when product changes
+                }
                 return updatedLine;
             }
             return l;
@@ -158,7 +160,7 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
     };
 
     const addLine = () => {
-        setLines(ls => [...ls, { id: Date.now() + Math.random(), productGroupId: '', productId: '', quantity: '1' }]);
+        setLines(ls => [...ls, { id: Date.now() + Math.random(), productGroupId: '', productId: '', quantity: '1', shelfId: '' }]);
     };
 
     const removeLine = (id: number) => {
@@ -169,20 +171,19 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
         }
     };
 
-    const getProductSku = (productId: string) => {
-        const product = products.find(p => p.id === productId);
-        return product?.sku || '';
-    };
+    const getProductSku = (productId: string) => findById(products, productId)?.sku || '';
 
     const getStockInfo = (productId: string, warehouseId: string, shelfId: string): string => {
+        if (!showStock || !productId || !warehouseId || (availableShelves.length > 0 && !shelfId)) return '';
+
         const effectiveShelfId = shelfId === '' ? null : shelfId;
         const stockItem = stockItems.find(item => 
             item.product_id === productId && 
             item.warehouse_id === warehouseId && 
             item.shelf_id === effectiveShelfId
         );
-        const product = products.find(p => p.id === productId);
-        const unit = units.find(u => u.id === product?.unit_id);
+        const product = findById(products, productId);
+        const unit = findById(units, product?.unit_id);
         
         const quantity = stockItem?.quantity || 0;
         const unitAbbr = unit?.abbreviation || '';
@@ -196,21 +197,18 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
         const newErrors: FormErrors = { header: {}, lines: {} };
         if (!header.date) newErrors.header!.date = true;
         if (!header.warehouseId) newErrors.header!.warehouseId = true;
-        
-        if (availableShelves.length > 0 && !header.shelfId) {
-            newErrors.header!.shelfId = true;
-        }
-
         if (!header.accountId) newErrors.header!.accountId = true;
 
         lines.forEach(l => {
-            const lineError: { productGroupId?: boolean, productId?: boolean, quantity?: boolean } = {};
+            const lineError: { productGroupId?: boolean, productId?: boolean, quantity?: boolean, shelfId?: boolean } = {};
             if (!l.productGroupId) lineError.productGroupId = true;
             if (!l.productId) lineError.productId = true;
             const quantityNumber = parseFloat(l.quantity);
             if (isNaN(quantityNumber) || quantityNumber <= 0) {
                 lineError.quantity = true;
             }
+            if(availableShelves.length > 0 && !l.shelfId) lineError.shelfId = true;
+
             if (Object.keys(lineError).length > 0) newErrors.lines![l.id] = lineError;
         });
 
@@ -227,14 +225,17 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
             return;
         }
         
-        const linesData = validLines.map(l => ({ product_id: l.productId, quantity: parseFloat(l.quantity) }));
+        const linesData = validLines.map(l => ({ 
+            product_id: l.productId, 
+            quantity: parseFloat(l.quantity),
+            shelf_id: l.shelfId || null
+        }));
 
         let success = false;
         if (isEditMode) {
              const headerData = {
                 date: header.date,
                 warehouse_id: header.warehouseId,
-                shelf_id: header.shelfId || null,
                 source_or_destination: selectedAccount.name,
                 notes: header.notes,
                 type: voucherType
@@ -244,7 +245,6 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
              const headerData = {
                 date: header.date,
                 warehouse_id: header.warehouseId,
-                shelf_id: header.shelfId || null,
                 source_or_destination: selectedAccount.name,
                 notes: header.notes,
             };
@@ -274,51 +274,19 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
     };
     
     const handleAddNewAccount = () => {
-        setModal({
-            type: 'ADD_ACCOUNT',
-            data: {
-                onSuccess: (newAccountId: string) => {
-                    setModal({
-                        type: isEditMode ? 'EDIT_STOCK_VOUCHER' : (isStockIn ? 'STOCK_IN' : 'STOCK_OUT'),
-                        data: {
-                            ...data,
-                            restoredState: {
-                                header: { ...header, accountId: newAccountId },
-                                lines,
-                            }
-                        }
-                    });
-                }
-            }
-        });
+        // This functionality needs to be adapted or removed if it complicates state restoration too much
+        addToast('Bu özellik yeni yapıda güncellenmelidir.', 'info');
     };
 
     const handleAddNewProduct = () => {
-        setModal({
-            type: 'ADD_PRODUCT',
-            data: {
-                onSuccess: (newProduct: { id: string, group_id: string }) => {
-                     const newLine = { id: Date.now(), productGroupId: newProduct.group_id, productId: newProduct.id, quantity: '1' };
-                     setModal({
-                        type: isEditMode ? 'EDIT_STOCK_VOUCHER' : (isStockIn ? 'STOCK_IN' : 'STOCK_OUT'),
-                        data: {
-                            ...data,
-                            restoredState: {
-                                header: header,
-                                lines: [...lines, newLine]
-                            }
-                        }
-                    });
-                }
-            }
-        });
+        addToast('Bu özellik yeni yapıda güncellenmelidir.', 'info');
     };
 
     return (
         <form id="stock-movement-form" onSubmit={handleSubmit} className="space-y-4">
             <fieldset id="voucher-header-info" className="form-fieldset border dark:border-slate-600 p-4 rounded-md">
                 <legend className="form-legend text-md font-medium text-slate-700 dark:text-slate-300 px-2 -mb-3">Fiş Başlık Bilgileri</legend>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-4">
                     <div>
                         <label htmlFor="voucher-number" className={formLabelClass}>Fiş Numarası</label>
                         <input id="voucher-number" type="text" value={voucherNumber} className={`${formInputSmallClass} bg-slate-100 dark:bg-slate-700`} readOnly />
@@ -331,21 +299,10 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
                         <label htmlFor="warehouse-select" className={formLabelClass}>Depo</label>
                         <SearchableSelect options={warehouses} value={header.warehouseId} onChange={val => handleHeaderChange('warehouseId', val)} placeholder="Depo Seçin" error={!!errors.header?.warehouseId}/>
                     </div>
-                    <div>
-                        <label htmlFor="shelf-select" className={formLabelClass}>Raf</label>
-                        <SearchableSelect
-                            options={availableShelves}
-                            value={header.shelfId}
-                            onChange={val => handleHeaderChange('shelfId', val)}
-                            placeholder={!header.warehouseId ? "Önce Depo Seçin" : availableShelves.length === 0 ? "Raf bulunmuyor" : "Raf Seçin"}
-                            disabled={!header.warehouseId || availableShelves.length === 0}
-                            error={!!errors.header?.shelfId}
-                        />
+                     <div className="md:col-span-3">
+                        <label htmlFor="voucher-notes" className={formLabelClass}>Notlar</label>
+                        <input id="voucher-notes" type="text" value={header.notes} onChange={e => handleHeaderChange('notes', e.target.value)} className={formInputSmallClass} />
                     </div>
-                </div>
-                <div className="mt-4">
-                    <label htmlFor="voucher-notes" className={formLabelClass}>Notlar</label>
-                    <input id="voucher-notes" type="text" value={header.notes} onChange={e => handleHeaderChange('notes', e.target.value)} className={formInputSmallClass} />
                 </div>
             </fieldset>
 
@@ -354,13 +311,7 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
                     <div>
                         <label htmlFor="account-type" className={formLabelClass}>Cari Tipi</label>
-                        <select
-                            id="account-type"
-                            value={accountType}
-                            onChange={(e) => setAccountType(e.target.value as AccountType)}
-                            className={formInputSmallClass}
-                            disabled={isEditMode}
-                        >
+                        <select id="account-type" value={accountType} onChange={(e) => setAccountType(e.target.value as AccountType)} className={formInputSmallClass} disabled={isEditMode}>
                             <option value="supplier">Tedarikçi</option>
                             <option value="customer">Müşteri</option>
                         </select>
@@ -371,9 +322,7 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
                             <div className="flex-grow">
                                 <SearchableSelect options={availableAccounts} value={header.accountId} onChange={val => handleHeaderChange('accountId', val)} placeholder="Cari Seçin" error={!!errors.header?.accountId}/>
                             </div>
-                            <button id="add-new-account-button" type="button" onClick={handleAddNewAccount} className="font-semibold py-1 px-3 text-sm rounded-md h-10 inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500" title="Yeni Cari Ekle">
-                                <PlusIcon /> Yeni
-                            </button>
+                            <button id="add-new-account-button" type="button" onClick={handleAddNewAccount} className="font-semibold py-1 px-3 text-sm rounded-md h-10 inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500" title="Yeni Cari Ekle"><PlusIcon /> Yeni</button>
                         </div>
                     </div>
                 </div>
@@ -382,26 +331,19 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
             <div id="voucher-details-section" className="space-y-2">
                 <div className="flex justify-between items-center">
                     <h3 className="section-title text-md font-medium text-slate-700 dark:text-slate-300">Fiş Detayları</h3>
-                     <button 
-                        id="toggle-stock-visibility-button"
-                        type="button" 
-                        onClick={() => setShowStock(s => !s)} 
-                        disabled={!header.warehouseId}
-                        className="font-semibold py-1 px-3 text-xs rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-sky-100 text-sky-800 hover:bg-sky-200 dark:bg-sky-900/40 dark:text-sky-200 dark:hover:bg-sky-900/60 disabled:bg-slate-100 dark:disabled:bg-slate-700 disabled:text-slate-400 dark:disabled:text-slate-500 disabled:cursor-not-allowed"
-                        title={!header.warehouseId ? 'Lütfen önce bir depo seçin' : ''}
-                    >
-                        <i className={`fa-solid fa-fw ${showStock ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                        {showStock ? 'Stokları Gizle' : 'Mevcut Stokları Göster'}
+                     <button id="toggle-stock-visibility-button" type="button" onClick={() => setShowStock(s => !s)} disabled={!header.warehouseId} className="font-semibold py-1 px-3 text-xs rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-sky-100 text-sky-800 hover:bg-sky-200 dark:bg-sky-900/40 dark:text-sky-200 dark:hover:bg-sky-900/60 disabled:bg-slate-100 dark:disabled:bg-slate-700 disabled:text-slate-400 dark:disabled:text-slate-500 disabled:cursor-not-allowed" title={!header.warehouseId ? 'Lütfen önce bir depo seçin' : ''}>
+                        <i className={`fa-solid fa-fw ${showStock ? 'fa-eye-slash' : 'fa-eye'}`}></i> {showStock ? 'Stokları Gizle' : 'Mevcut Stokları Göster'}
                     </button>
                 </div>
-                <div className="data-table-container border dark:border-slate-700 rounded-md">
-                    <table id="movement-lines-table" className="data-table w-full text-left text-sm">
+                <div className="data-table-container border dark:border-slate-700 rounded-md overflow-x-auto">
+                    <table id="movement-lines-table" className="data-table w-full text-left text-sm min-w-[900px]">
                         <thead className="table-header bg-slate-50 dark:bg-slate-700/50">
                             <tr>
-                                <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[25%]">Ürün Grubu</th>
+                                <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[20%]">Ürün Grubu</th>
                                 <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Ürün Kodu</th>
-                                <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[30%]">Ürün Adı</th>
-                                <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Mevcut Stok</th>
+                                <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[25%]">Ürün Adı</th>
+                                <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Raf</th>
+                                <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[10%]">Mevcut Stok</th>
                                 <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[10%]">Miktar</th>
                                 <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[5%]"></th>
                             </tr>
@@ -409,63 +351,38 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
                         <tbody className="table-body">
                             {lines.map((line) => {
                                 const sku = getProductSku(line.productId);
-                                const availableProductsForLine = line.productGroupId
-                                    ? products.filter(p => p.group_id === line.productGroupId)
-                                    : [];
+                                const availableProductsForLine = line.productGroupId ? products.filter(p => p.group_id === line.productGroupId) : [];
+                                
+                                const shelvesForLine = (() => {
+                                    if (voucherType === 'IN') return availableShelves;
+                                    
+                                    // For stock OUT, filter shelves that contain the product
+                                    if (!line.productId || !header.warehouseId) return [];
+                                    const shelfIdsWithStock = stockItems
+                                        .filter(si => si.product_id === line.productId && si.warehouse_id === header.warehouseId && si.quantity > 0 && si.shelf_id)
+                                        .map(si => si.shelf_id);
+                                    return shelves.filter(shelf => shelfIdsWithStock.includes(shelf.id));
+                                })();
+
                                 return (
                                     <tr key={line.id} className="table-row border-t dark:border-slate-700">
+                                        <td className="table-cell p-2 align-middle"><SearchableSelect options={productGroups} value={line.productGroupId} onChange={val => handleLineChange(line.id, 'productGroupId', val)} placeholder="Grup Seçin" error={!!errors.lines?.[line.id]?.productGroupId} /></td>
+                                        <td className="table-cell p-2 align-middle"><input type="text" value={sku} className={`${formInputSmallClass} bg-slate-100 dark:bg-slate-700 font-mono`} readOnly aria-label="Ürün Kodu" /></td>
+                                        <td className="table-cell p-2 align-middle"><SearchableSelect options={availableProductsForLine} value={line.productId} onChange={val => handleLineChange(line.id, 'productId', val)} placeholder="Ürün Seçin" disabled={!line.productGroupId} error={!!errors.lines?.[line.id]?.productId} /></td>
                                         <td className="table-cell p-2 align-middle">
                                             <SearchableSelect
-                                                options={productGroups}
-                                                value={line.productGroupId}
-                                                onChange={val => handleLineChange(line.id, 'productGroupId', val)}
-                                                placeholder="Grup Seçin"
-                                                error={!!errors.lines?.[line.id]?.productGroupId}
+                                                options={shelvesForLine}
+                                                value={line.shelfId}
+                                                onChange={val => handleLineChange(line.id, 'shelfId', val)}
+                                                placeholder={availableShelves.length > 0 ? "Raf Seçin" : "Raf Bulunmuyor"}
+                                                disabled={availableShelves.length === 0}
+                                                error={!!errors.lines?.[line.id]?.shelfId}
                                             />
                                         </td>
-                                        <td className="table-cell p-2 align-middle">
-                                            <input
-                                                type="text"
-                                                value={sku}
-                                                className={`${formInputSmallClass} bg-slate-100 dark:bg-slate-700 font-mono`}
-                                                readOnly
-                                                aria-label="Ürün Kodu"
-                                            />
-                                        </td>
-                                        <td className="table-cell p-2 align-middle">
-                                            <SearchableSelect 
-                                                options={availableProductsForLine} 
-                                                value={line.productId} 
-                                                onChange={val => handleLineChange(line.id, 'productId', val)} 
-                                                placeholder="Ürün Seçin"
-                                                disabled={!line.productGroupId}
-                                                error={!!errors.lines?.[line.id]?.productId}
-                                            />
-                                        </td>
-                                        <td className="table-cell p-2 align-middle text-slate-600 dark:text-slate-400 font-medium">
-                                            {showStock && line.productId && header.warehouseId && (header.shelfId || availableShelves.length === 0) &&
-                                                getStockInfo(line.productId, header.warehouseId, header.shelfId)
-                                            }
-                                        </td>
-                                        <td className="table-cell p-2 align-middle">
-                                            <input 
-                                                type="number"
-                                                step="any"
-                                                min="0.0001" 
-                                                value={line.quantity} 
-                                                onChange={e => handleLineChange(line.id, 'quantity', e.target.value)} 
-                                                className={`${formInputSmallClass} ${errors.lines?.[line.id]?.quantity ? 'border-red-500' : ''}`}
-                                            />
-                                        </td>
+                                        <td className="table-cell p-2 align-middle text-slate-600 dark:text-slate-400 font-medium">{getStockInfo(line.productId, header.warehouseId, line.shelfId)}</td>
+                                        <td className="table-cell p-2 align-middle"><input type="number" step="any" min="0.0001" value={line.quantity} onChange={e => handleLineChange(line.id, 'quantity', e.target.value)} className={`${formInputSmallClass} ${errors.lines?.[line.id]?.quantity ? 'border-red-500' : ''}`} /></td>
                                         <td className="table-cell p-2 text-center align-middle">
-                                            <button 
-                                                type="button" 
-                                                onClick={() => removeLine(line.id)} 
-                                                className="remove-line-button text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400 disabled:text-slate-300 dark:disabled:text-slate-600"
-                                                disabled={lines.length <= 1}
-                                            >
-                                                <TrashIcon />
-                                            </button>
+                                            <button type="button" onClick={() => removeLine(line.id)} className="remove-line-button text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400 disabled:text-slate-300 dark:disabled:text-slate-600" disabled={lines.length <= 1}><TrashIcon /></button>
                                         </td>
                                     </tr>
                                 );
@@ -473,29 +390,14 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
                         </tbody>
                     </table>
                 </div>
-                <div className="flex justify-end gap-2">
-                    <button id="add-new-product-button" type="button" onClick={handleAddNewProduct} className="font-semibold py-1 px-3 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-sky-200 text-sky-800 hover:bg-sky-300 dark:bg-sky-900/40 dark:text-sky-200 dark:hover:bg-sky-900/60">
-                        <PlusIcon /> Yeni Ürün Ekle
-                    </button>
-                    <button id="add-line-button" type="button" onClick={addLine} className="font-semibold py-1 px-3 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500">
-                        <PlusIcon /> Satır Ekle
-                    </button>
+                <div className="flex justify-end gap-2 mt-2">
+                    <button id="add-new-product-button" type="button" onClick={handleAddNewProduct} className="font-semibold py-1 px-3 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-sky-200 text-sky-800 hover:bg-sky-300 dark:bg-sky-900/40 dark:text-sky-200 dark:hover:bg-sky-900/60"><PlusIcon /> Yeni Ürün Ekle</button>
+                    <button id="add-line-button" type="button" onClick={addLine} className="font-semibold py-1 px-3 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500"><PlusIcon /> Satır Ekle</button>
                 </div>
             </div>
 
             <div className="modal-actions flex justify-between items-center mt-6 pt-4 border-t dark:border-slate-700">
-                <div>
-                    {isEdit && (
-                        <button 
-                            id="delete-voucher-button"
-                            type="button" 
-                            onClick={handleDelete}
-                            className="danger-action-button font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600"
-                        >
-                           <TrashIcon /> Sil
-                        </button>
-                    )}
-                </div>
+                <div>{isEdit && (<button id="delete-voucher-button" type="button" onClick={handleDelete} className="danger-action-button font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600"><TrashIcon /> Sil</button>)}</div>
                 <div className="flex gap-3">
                     <button id="cancel-voucher-button" type="button" onClick={onClose} className="secondary-action-button font-semibold py-2 px-4 rounded-md transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600">İptal</button>
                     <button id="save-voucher-button" type="submit" className="primary-action-button font-semibold py-2 px-4 rounded-md transition-colors bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-400">Kaydet</button>
