@@ -284,12 +284,58 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
     };
     
     const handleAddNewAccount = () => {
-        // This functionality needs to be adapted or removed if it complicates state restoration too much
-        addToast('Bu özellik yeni yapıda güncellenmelidir.', 'info');
+        const currentModalType = isEditMode ? 'EDIT_STOCK_VOUCHER' : (isStockIn ? 'STOCK_IN' : 'STOCK_OUT');
+    
+        setModal({
+            type: 'ADD_ACCOUNT',
+            data: {
+                onSuccess: (newAccountId: string) => {
+                    setModal({
+                        type: currentModalType,
+                        data: {
+                            ...data,
+                            restoredState: {
+                                header: { ...header, accountId: newAccountId },
+                                lines: lines
+                            }
+                        }
+                    });
+                }
+            }
+        });
     };
 
     const handleAddNewProduct = () => {
-        addToast('Bu özellik yeni yapıda güncellenmelidir.', 'info');
+        const currentModalType = isEditMode ? 'EDIT_STOCK_VOUCHER' : (isStockIn ? 'STOCK_IN' : 'STOCK_OUT');
+    
+        setModal({
+            type: 'ADD_PRODUCT',
+            data: {
+                onSuccess: (newProduct: { id: string, group_id: string }) => {
+                    const newLines = [
+                        ...lines,
+                        {
+                            id: Date.now() + Math.random(),
+                            productGroupId: newProduct.group_id,
+                            productId: newProduct.id,
+                            quantity: '1',
+                            shelfId: ''
+                        }
+                    ];
+    
+                    setModal({
+                        type: currentModalType,
+                        data: {
+                            ...data,
+                            restoredState: {
+                                header: header,
+                                lines: newLines
+                            }
+                        }
+                    });
+                }
+            }
+        });
     };
 
     return (

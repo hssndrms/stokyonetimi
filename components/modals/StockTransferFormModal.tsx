@@ -243,7 +243,37 @@ const StockTransferFormModal: React.FC<StockTransferFormModalProps> = ({ isEdit,
     };
     
     const handleAddNewProduct = () => {
-         addToast('Bu özellik yeni yapıda güncellenmelidir.', 'info');
+        const currentModalType = isEditMode ? 'EDIT_STOCK_TRANSFER' : 'STOCK_TRANSFER';
+    
+        setModal({
+            type: 'ADD_PRODUCT',
+            data: {
+                onSuccess: (newProduct: { id: string, group_id: string }) => {
+                    const newLines = [
+                        ...lines,
+                        {
+                            id: Date.now() + Math.random(),
+                            productGroupId: newProduct.group_id,
+                            productId: newProduct.id,
+                            quantity: '1',
+                            sourceShelfId: '',
+                            destShelfId: ''
+                        }
+                    ];
+    
+                    setModal({
+                        type: currentModalType,
+                        data: {
+                            ...data,
+                            restoredState: {
+                                header: header,
+                                lines: newLines
+                            }
+                        }
+                    });
+                }
+            }
+        });
     };
 
     return (

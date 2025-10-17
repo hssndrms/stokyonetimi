@@ -2,48 +2,48 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { formInputSmallClass } from '../styles/common';
 
-// This portal component renders its children in a div attached to document.body.
-// It positions itself based on the target element and handles closing on outside clicks or scroll.
+// The Portal now takes a pre-calculated style. Its own internal style logic is removed.
 const DropdownPortal: React.FC<{
   targetEl: HTMLElement | null;
   children: React.ReactNode;
   onClose: () => void;
-}> = ({ targetEl, children, onClose }) => {
+  style: React.CSSProperties; // New prop for pre-calculated styles
+}> = ({ targetEl, children, onClose, style }) => {
     const dropdownRef = useRef<HTMLDivElement>(null);
-    const [style, setStyle] = useState<React.CSSProperties>({});
 
+    // useEffect for scroll events remains to close the dropdown if the page scrolls.
     useEffect(() => {
-        if (targetEl) {
-            const rect = targetEl.getBoundingClientRect();
-            setStyle({
-                position: 'fixed',
-                top: `${rect.bottom}px`,
-                left: `${rect.left}px`,
-                width: `${rect.width}px`,
-            });
-
-            // Close dropdown on scroll to prevent it from being misplaced
-            const handleScroll = () => {
-                onClose();
-            };
-            window.addEventListener('scroll', handleScroll, true);
-            return () => {
-                window.removeEventListener('scroll', handleScroll, true);
-            };
-        }
-    }, [targetEl, onClose]);
-
-    useEffect(() => {
-        // Close dropdown when clicking outside of it or its target input
-        const handleClickOutside = (event: MouseEvent) => {
-            if (
-                dropdownRef.current && 
-                !dropdownRef.current.contains(event.target as Node) &&
-                targetEl && 
-                !targetEl.contains(event.target as Node)
-            ) {
-                onClose();
+        const handleScroll = (event: Event) => {
+            if (dropdownRef.current && dropdownRef.current.contains(event.target as Node)) {
+                return;
             }
+            onClose();
+        };
+        window.addEventListener('scroll', handleScroll, true);
+        return () => {
+            window.removeEventListener('scroll', handleScroll, true);
+        };
+    }, [onClose]);
+
+    // useEffect for outside clicks remains.
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as Node;
+            
+            if ((targetEl && targetEl.contains(target)) || (dropdownRef.current && dropdownRef.current.contains(target))) {
+                return;
+            }
+
+            const dropdownRect = dropdownRef.current?.getBoundingClientRect();
+            if (dropdownRect && 
+                event.clientX >= dropdownRect.left && 
+                event.clientX <= dropdownRect.right &&
+                event.clientY >= dropdownRect.top && 
+                event.clientY <= dropdownRect.bottom
+            ) {
+                return;
+            }
+            onClose();
         };
 
         document.addEventListener('mousedown', handleClickOutside);
@@ -52,11 +52,16 @@ const DropdownPortal: React.FC<{
         };
     }, [onClose, targetEl]);
 
-
     if (!targetEl) return null;
 
     return createPortal(
-        <div ref={dropdownRef} style={style} className="z-[1001]"> {/* High z-index to appear over modals */}
+        // The style is applied directly from props. This is the core of the fix.
+        <div 
+            ref={dropdownRef} 
+            style={style} 
+            className="z-[1001]"
+            onMouseDown={(e) => e.stopPropagation()}
+        >
             {children}
         </div>,
         document.body
@@ -71,18 +76,15 @@ const SearchableSelect: React.FC<{
   disabled?: boolean;
   error?: boolean;
 }> = ({ options, value, onChange, placeholder, disabled = false, error = false }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  // We now use a single state for position, which also determines if the dropdown is open.
+  const [position, setPosition] = useState<React.CSSProperties | null>(null);
+  const isOpen = position !== null;
+  
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // Find the selected option based on the incoming value prop
   const selectedOption = useMemo(() => options.find(o => o.id === value), [options, value]);
-
-  // This state is the single source of truth for the input's text content.
   const [inputValue, setInputValue] = useState(selectedOption?.name || '');
   
-  // This effect syncs the inputValue with the selectedOption when the dropdown is closed.
-  // This handles cases where the `value` prop changes from the parent, or when the user clicks away,
-  // reverting the input to the currently selected value's name.
+  // This effect correctly resets the input value when the dropdown is closed or selection changes.
   useEffect(() => {
     if (!isOpen) {
       setInputValue(selectedOption?.name || '');
@@ -91,40 +93,73 @@ const SearchableSelect: React.FC<{
 
 
   const filteredOptions = useMemo(() => {
-    // Only filter if the dropdown is open. Otherwise, the list can be empty.
     if (!isOpen) return [];
-    
-    // If inputValue is the same as the selected option name, it means the user just clicked
-    // the input but hasn't typed yet. In this case, show all options for better UX.
     if (inputValue === selectedOption?.name) {
       return options;
     }
-
     return options.filter(option =>
       option.name?.toLowerCase().includes(inputValue.toLowerCase())
     );
   }, [options, inputValue, isOpen, selectedOption]);
   
+  const closeDropdown = () => {
+      setPosition(null);
+  };
+
+  // The core logic to calculate position and open the dropdown.
+  const openDropdown = () => {
+    if (!inputRef.current || disabled) return;
+
+    const rect = inputRef.current.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const DROPDOWN_MAX_HEIGHT = 240;
+    const MARGIN = 8;
+
+    const spaceBelow = viewportHeight - rect.bottom;
+    const spaceAbove = rect.top;
+
+    const positionStyle: React.CSSProperties = {
+        position: 'fixed',
+        left: `${rect.left}px`,
+        width: `${rect.width}px`,
+        overflowY: 'auto',
+    };
+
+    const opensUp = spaceBelow < DROPDOWN_MAX_HEIGHT && spaceAbove > spaceBelow;
+
+    if (opensUp) {
+        positionStyle.bottom = `${viewportHeight - rect.top}px`;
+        positionStyle.top = 'auto';
+        positionStyle.maxHeight = `${Math.min(DROPDOWN_MAX_HEIGHT, spaceAbove - MARGIN)}px`;
+    } else {
+        positionStyle.top = `${rect.bottom}px`;
+        positionStyle.bottom = 'auto';
+        positionStyle.maxHeight = `${Math.min(DROPDOWN_MAX_HEIGHT, spaceBelow - MARGIN)}px`;
+    }
+    
+    setPosition(positionStyle);
+  }
+
   const handleSelect = (optionId: string) => {
     const option = options.find(o => o.id === optionId);
-    setInputValue(option?.name || ''); // Explicitly set the display value
-    onChange(optionId); // Notify parent of the change
-    setIsOpen(false); // Close the dropdown
-    inputRef.current?.blur(); // Unfocus the input
+    setInputValue(option?.name || '');
+    onChange(optionId);
+    closeDropdown(); // Sets position to null
+    inputRef.current?.blur();
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       setInputValue(e.target.value);
-      if (!isOpen) setIsOpen(true);
+      if (!isOpen) {
+          openDropdown(); // Open if user starts typing
+      }
   }
   
+  // Handles both click and keyboard focus
   const handleFocus = () => {
-    if (disabled) return;
-    setIsOpen(true);
-  };
-
-  const closeDropdown = () => {
-      setIsOpen(false);
+    if (!isOpen) {
+      openDropdown();
+    }
   };
   
   return (
@@ -132,7 +167,7 @@ const SearchableSelect: React.FC<{
       <input
         ref={inputRef}
         type="text"
-        value={inputValue} // The input is now fully controlled by the `inputValue` state.
+        value={inputValue}
         onChange={handleInputChange}
         onFocus={handleFocus}
         placeholder={placeholder}
@@ -142,16 +177,17 @@ const SearchableSelect: React.FC<{
         autoComplete="off"
       />
       {isOpen && !disabled && (
-        <DropdownPortal targetEl={inputRef.current} onClose={closeDropdown}>
-            <ul className="searchable-select-dropdown w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-200 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
+        <DropdownPortal 
+            targetEl={inputRef.current} 
+            onClose={closeDropdown}
+            style={position!} // The style is passed pre-calculated.
+        >
+            <ul className="searchable-select-dropdown w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-200 rounded-md mt-1 shadow-lg">
             {filteredOptions.map(option => (
                 <li
                     key={option.id}
-                    // Use onMouseDown to prevent input blur from closing dropdown before selection.
-                    // Stop propagation to prevent clicks from reaching modal overlays and closing them.
                     onMouseDown={(e) => {
                         e.preventDefault(); 
-                        e.stopPropagation();
                         handleSelect(option.id)
                     }}
                     className="dropdown-item px-3 py-2 cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-900 text-sm"

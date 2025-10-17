@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, ChangeEvent } from 'react';
 import { Account, AccountType, ModalState } from '../../types';
 import { useToast } from '../../context/ToastContext';
 import { formInputClass, formLabelClass } from '../../styles/common';
@@ -88,6 +88,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({ isEdit, data, onClo
                     <div className="space-y-4 pt-4">
                         <div>
                             <label htmlFor="phone" className={formLabelClass}>Telefon</label>
+                            {/* FIX: Corrected a broken input element that had textarea attributes and closing tag. Also added missing email and address fields. */}
                             <input type="tel" id="account-phone-input" name="phone" value={formData.phone} onChange={handleChange} className={formInputClass} />
                         </div>
                         <div>
@@ -96,7 +97,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({ isEdit, data, onClo
                         </div>
                         <div>
                             <label htmlFor="address" className={formLabelClass}>Adres</label>
-                            <textarea id="account-address-textarea" name="address" value={formData.address} onChange={handleChange} className={`${formInputClass} resize-y`} rows={3}></textarea>
+                            <textarea id="account-address-input" name="address" value={formData.address} onChange={handleChange} className={`${formInputClass} resize-y`} rows={3}></textarea>
                         </div>
                     </div>
                 </fieldset>

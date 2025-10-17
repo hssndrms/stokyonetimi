@@ -21,7 +21,10 @@ type Header = {
     destWarehouseId: string
 };
 
-interface ProductionVoucherFormModalProps extends ModalComponentProps<{ voucher_number?: string }> {
+interface ProductionVoucherFormModalProps extends ModalComponentProps<{ 
+    voucher_number?: string,
+    restoredState?: { header: Header, consumed: Line[], produced: Line[] }
+}> {
     isEdit: boolean;
     setModal: (modal: ModalState) => void;
 }
@@ -35,6 +38,10 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
     const isEditMode = !!(isEdit && data?.voucher_number);
 
     const initializeState = () => {
+        if (data?.restoredState) {
+            return data.restoredState;
+        }
+
         if (isEditMode) {
             const movements = stockMovements.filter(m => m.voucher_number === data.voucher_number);
             if (movements.length > 0) {
@@ -250,6 +257,39 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
         });
     };
 
+    const handleAddNewProduct = (lineType: 'consumed' | 'produced') => {
+        const currentModalType = isEditMode ? 'EDIT_PRODUCTION_VOUCHER' : 'ADD_PRODUCTION_VOUCHER';
+    
+        setModal({
+            type: 'ADD_PRODUCT',
+            data: {
+                onSuccess: (newProduct: { id: string, group_id: string }) => {
+                    const newLine = {
+                        id: Date.now() + Math.random(),
+                        productGroupId: newProduct.group_id,
+                        productId: newProduct.id,
+                        quantity: '1',
+                        shelfId: ''
+                    };
+    
+                    const restoredState = {
+                        header: header,
+                        consumed: lineType === 'consumed' ? [...consumedLines, newLine] : consumedLines,
+                        produced: lineType === 'produced' ? [...producedLines, newLine] : producedLines
+                    };
+    
+                    setModal({
+                        type: currentModalType,
+                        data: {
+                            ...data,
+                            restoredState: restoredState
+                        }
+                    });
+                }
+            }
+        });
+    };
+
     const LineRow: React.FC<{
         line: Line;
         lineType: 'consumed' | 'produced';
@@ -332,7 +372,8 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
                             ))}</tbody>
                         </table>
                     </div>
-                     <div className="flex justify-end mt-2">
+                     <div className="flex justify-end mt-2 gap-2">
+                        <button id="add-new-produced-product-button" type="button" onClick={() => handleAddNewProduct('produced')} className="font-semibold py-1 px-3 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-sky-200 text-sky-800 hover:bg-sky-300 dark:bg-sky-900/40 dark:text-sky-200 dark:hover:bg-sky-900/60"><PlusIcon /> Yeni Ürün Ekle</button>
                         <button id="add-produced-line-button" type="button" onClick={() => addLine('produced')} className="font-semibold py-1 px-3 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500"><PlusIcon /> Satır Ekle</button>
                     </div>
                 </div>
@@ -357,6 +398,7 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
                     </div>
                     <div className="flex justify-end mt-2 gap-2">
                          <button id="toggle-stock-visibility-button" type="button" onClick={() => setShowStock(s => !s)} disabled={!header.sourceWarehouseId} className="font-semibold py-1 px-3 text-xs rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-sky-100 text-sky-800 hover:bg-sky-200 dark:bg-sky-900/40 dark:text-sky-200 dark:hover:bg-sky-900/60 disabled:bg-slate-100 dark:disabled:bg-slate-700 disabled:text-slate-400 dark:disabled:text-slate-500 disabled:cursor-not-allowed"><i className={`fa-solid fa-fw ${showStock ? 'fa-eye-slash' : 'fa-eye'}`}></i> {showStock ? 'Stokları Gizle' : 'Mevcut Stokları Göster'}</button>
+                         <button id="add-new-consumed-product-button" type="button" onClick={() => handleAddNewProduct('consumed')} className="font-semibold py-1 px-3 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-sky-200 text-sky-800 hover:bg-sky-300 dark:bg-sky-900/40 dark:text-sky-200 dark:hover:bg-sky-900/60"><PlusIcon /> Yeni Ürün Ekle</button>
                         <button id="add-consumed-line-button" type="button" onClick={() => addLine('consumed')} className="font-semibold py-1 px-3 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500"><PlusIcon /> Satır Ekle</button>
                      </div>
                 </div>
