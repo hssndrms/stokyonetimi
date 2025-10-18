@@ -50,7 +50,6 @@ jobs:
           tagName: ${{ github.ref_name }} # v1.2.3
           releaseName: "Stok Takip Uygulaması ${{ github.ref_name }}"
           releaseBody: "Bu sürüm için kurulum dosyalarını aşağıdaki Assets bölümünden indirebilirsiniz."
-          projectPath: "." # Ana dizini belirt
           includeRelease: true
           includeUpdaterJson: true
       
