@@ -1,7 +1,7 @@
 {
   "name": "stok-takip-supabase",
   "private": true,
-  "version": "1.4.10",
+  "version": "1.4.11",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,8 +11,7 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
-    "version": "node --loader ts-node/esm scripts/sync-version.js && git add src-tauri/tauri.conf.json data/version.ts"
-    
+    "version": "node scripts/sync-version.js && git add src-tauri/tauri.conf.json data/version.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.44.4",
