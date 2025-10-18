@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "version": "node scripts/sync-version.js && git add src-tauri/tauri.conf.json data/version.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.44.4",
