@@ -6,11 +6,11 @@
     "distDir": "../dist",
     "withGlobalTauri": true
   },
+  "package": {
+    "productName": "Stok Takip Uygulaması",
+    "version": "1.4.21"
+  },
   "tauri": {
-    "package": {
-      "productName": "Stok Takip Uygulaması",
-      "version": "1.4.14"
-    },
     "allowlist": {
       "all": false,
       "shell": {
