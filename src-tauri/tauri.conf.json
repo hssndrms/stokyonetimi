@@ -8,7 +8,7 @@
   },
   "package": {
     "productName": "Stok Takip Uygulaması",
-    "version": "1.4.1"
+    "version": "1.4.4"
   },
   "tauri": {
     "allowlist": {
@@ -24,7 +24,6 @@
       "fs": {
         "all": false,
         "writeFile": true,
-        "writeBinaryFile": true,
         "scope": ["$DOWNLOAD/*"]
       },
       "notification": {
