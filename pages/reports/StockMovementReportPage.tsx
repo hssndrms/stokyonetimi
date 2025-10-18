@@ -125,7 +125,8 @@ const StockMovementReportPage: React.FC<{
     };
 
     const handleListClick = () => {
-        const filterPredicate = (item: StockMovement): boolean => {
+        // --- 1. Process Non-Transfer Movements ---
+        const nonTransferPredicate = (item: StockMovement): boolean => {
             const itemDate = new Date(item.date);
             if (filters.startDate && itemDate < new Date(filters.startDate)) return false;
             if (filters.endDate) {
@@ -133,29 +134,6 @@ const StockMovementReportPage: React.FC<{
                 endDate.setHours(23, 59, 59, 999);
                 if (itemDate > endDate) return false;
             }
-
-            if (filters.transactionType && filters.transactionType !== 'all') {
-                switch (filters.transactionType) {
-                    case 'STANDARD_IN':
-                        if (item.transaction_type !== 'STANDARD' || item.type !== 'IN') return false;
-                        break;
-                    case 'STANDARD_OUT':
-                        if (item.transaction_type !== 'STANDARD' || item.type !== 'OUT') return false;
-                        break;
-                    case 'TRANSFER':
-                        if (item.transaction_type !== 'TRANSFER') return false;
-                        break;
-                    case 'PRODUCTION_IN':
-                        if (item.transaction_type !== 'PRODUCTION' || item.type !== 'IN') return false;
-                        break;
-                    case 'PRODUCTION_OUT':
-                        if (item.transaction_type !== 'PRODUCTION' || item.type !== 'OUT') return false;
-                        break;
-                    default:
-                        break;
-                }
-            }
-
             if (filters.productId && item.product_id !== filters.productId) return false;
             if (filters.productGroupId) {
                 const product = findById(products, item.product_id);
@@ -163,122 +141,145 @@ const StockMovementReportPage: React.FC<{
             }
             if(filters.partyId) {
                 const account = findById(accounts, filters.partyId);
-                if (item.source_or_destination !== account?.name) {
-                    return false;
+                if (item.source_or_destination !== account?.name) return false;
+            }
+            if (filters.notes && !item.notes?.toLowerCase().includes(filters.notes.toLowerCase().trim())) return false;
+            if (filters.warehouseId && item.warehouse_id !== filters.warehouseId) return false;
+            if (filters.shelfId && item.shelf_id !== filters.shelfId) return false;
+    
+            if (filters.transactionType && filters.transactionType !== 'all') {
+                if (filters.transactionType === 'TRANSFER') return false; // Handled separately
+                switch (filters.transactionType) {
+                    case 'STANDARD_IN':
+                        if (item.transaction_type !== 'STANDARD' || item.type !== 'IN') return false;
+                        break;
+                    case 'STANDARD_OUT':
+                        if (item.transaction_type !== 'STANDARD' || item.type !== 'OUT') return false;
+                        break;
+                    case 'PRODUCTION_IN':
+                        if (item.transaction_type !== 'PRODUCTION' || item.type !== 'IN') return false;
+                        break;
+                    case 'PRODUCTION_OUT':
+                        if (item.transaction_type !== 'PRODUCTION' || item.type !== 'OUT') return false;
+                        break;
                 }
             }
-             if (filters.notes && !item.notes?.toLowerCase().includes(filters.notes.toLowerCase().trim())) {
-                return false;
-            }
-            if (filters.warehouseId) {
-                 if (item.warehouse_id !== filters.warehouseId) {
-                    // For transfers, check if the other leg of the transfer matches the warehouse filter
-                    if (item.transaction_type === 'TRANSFER') {
-                        const pairMovements = movements.filter(m => m.voucher_number === item.voucher_number && m.product_id === item.product_id);
-                        const pair = pairMovements.find(p => p.id !== item.id);
-                        if (!pair || pair.warehouse_id !== filters.warehouseId) return false;
-                    } else {
-                        // For non-transfers, it's a direct mismatch
-                        return false;
-                    }
-                }
-            }
-            if (filters.shelfId) {
-                 if (item.shelf_id !== filters.shelfId) {
-                    if (item.transaction_type === 'TRANSFER') {
-                        const pairMovements = movements.filter(m => m.voucher_number === item.voucher_number && m.product_id === item.product_id);
-                        const pair = pairMovements.find(p => p.id !== item.id);
-                        if (!pair || pair.shelf_id !== filters.shelfId) return false;
-                    } else {
-                         return false;
-                    }
-                 }
-            }
-            
             return true;
         };
-
-        const filteredMovements = movements.filter(filterPredicate);
-
-        const groupedByVoucher = filteredMovements.reduce((acc, m) => {
-            if (!acc[m.voucher_number]) acc[m.voucher_number] = [];
-            acc[m.voucher_number].push(m);
-            return acc;
-        }, {} as Record<string, StockMovement[]>);
-        
-        const finalReportData: any[] = [];
-
-        Object.values(groupedByVoucher).forEach(movementsInVoucher => {
-            const transactionType = movementsInVoucher[0].transaction_type;
-
-            if (transactionType === 'TRANSFER') {
-                const groupedByProduct = movementsInVoucher.reduce((acc, m) => {
-                    if (!acc[m.product_id]) acc[m.product_id] = { in: null, out: null };
-                    if (m.type === 'IN') acc[m.product_id].in = m;
-                    else acc[m.product_id].out = m;
-                    return acc;
-                }, {} as Record<string, { in: StockMovement | null, out: StockMovement | null }>);
-
-                Object.values(groupedByProduct).forEach(pair => {
-                    if (pair.in && pair.out) {
-                        const product = findById(products, pair.out.product_id);
-                        const outWarehouse = findById(warehouses, pair.out.warehouse_id);
-                        const outShelf = findById(shelves, pair.out.shelf_id);
-                        const inWarehouse = findById(warehouses, pair.in.warehouse_id);
-                        const inShelf = findById(shelves, pair.in.shelf_id);
-                        
-                        finalReportData.push({
-                            "Tarih": new Date(pair.out.date).toLocaleDateString(),
-                            "Fiş No": pair.out.voucher_number,
-                            "İşlem Türü": "Transfer",
-                            "Ürün Adı": product?.name,
-                            "Miktar": formatNumber(pair.out.quantity),
-                            "Birim": getUnitAbbr(pair.out.product_id),
-                            "Çıkan Depo": outWarehouse?.name,
-                            "Çıkan Raf": outShelf?.name,
-                            "Giren Depo": inWarehouse?.name,
-                            "Giren Raf": inShelf?.name,
-                            "İlgili Cari": '-',
-                            "Not": pair.out.notes,
-                            "Kayıt Zamanı": new Date(pair.out.created_at).toLocaleString(),
-                            "Güncelleme Zamanı": new Date(pair.out.created_at).getTime() === new Date(pair.out.updated_at).getTime() ? '-' : new Date(pair.out.updated_at).toLocaleString()
-                        });
-                    }
-                });
-            } else { // Handles 'STANDARD' and 'PRODUCTION'
-                movementsInVoucher.forEach(m => {
-                    const product = findById(products, m.product_id);
-                    const warehouse = findById(warehouses, m.warehouse_id);
-                    const shelf = findById(shelves, m.shelf_id);
-
-                    let işlemTürü = '';
-                    if (m.transaction_type === 'PRODUCTION') {
-                        işlemTürü = m.type === 'IN' ? 'Üretimden Giriş' : 'Üretim Sarf';
-                    } else { // STANDARD
-                        işlemTürü = m.type === 'IN' ? 'Giriş' : 'Çıkış';
-                    }
-
-                    finalReportData.push({
-                        "Tarih": new Date(m.date).toLocaleDateString(),
-                        "Fiş No": m.voucher_number,
-                        "İşlem Türü": işlemTürü,
-                        "Ürün Adı": product?.name,
-                        "Miktar": formatNumber(m.quantity),
-                        "Birim": getUnitAbbr(m.product_id),
-                        "Çıkan Depo": m.type === 'OUT' ? warehouse?.name : '-',
-                        "Çıkan Raf": m.type === 'OUT' ? shelf?.name : '-',
-                        "Giren Depo": m.type === 'IN' ? warehouse?.name : '-',
-                        "Giren Raf": m.type === 'IN' ? shelf?.name : '-',
-                        "İlgili Cari": m.source_or_destination,
-                        "Not": m.notes,
-                        "Kayıt Zamanı": new Date(m.created_at).toLocaleString(),
-                        "Güncelleme Zamanı": new Date(m.created_at).getTime() === new Date(m.updated_at).getTime() ? '-' : new Date(m.updated_at).toLocaleString()
-                    });
-                });
+    
+        const nonTransferMovements = movements.filter(m => m.transaction_type !== 'TRANSFER');
+        const filteredNonTransferMovements = nonTransferMovements.filter(nonTransferPredicate);
+    
+        const nonTransferReportData = filteredNonTransferMovements.map(m => {
+            const product = findById(products, m.product_id);
+            const warehouse = findById(warehouses, m.warehouse_id);
+            const shelf = findById(shelves, m.shelf_id);
+    
+            let işlemTürü = '';
+            if (m.transaction_type === 'PRODUCTION') {
+                işlemTürü = m.type === 'IN' ? 'Üretimden Giriş' : 'Üretim Sarf';
+            } else { // STANDARD
+                işlemTürü = m.type === 'IN' ? 'Giriş' : 'Çıkış';
             }
+    
+            return {
+                "Tarih": new Date(m.date).toLocaleDateString(),
+                "Fiş No": m.voucher_number,
+                "İşlem Türü": işlemTürü,
+                "Ürün Adı": product?.name,
+                "Miktar": formatNumber(m.quantity),
+                "Birim": getUnitAbbr(m.product_id),
+                "Çıkan Depo": m.type === 'OUT' ? warehouse?.name : '-',
+                "Çıkan Raf": m.type === 'OUT' ? shelf?.name || '-' : '-',
+                "Giren Depo": m.type === 'IN' ? warehouse?.name : '-',
+                "Giren Raf": m.type === 'IN' ? shelf?.name || '-' : '-',
+                "İlgili Cari": m.source_or_destination,
+                "Not": m.notes,
+                "Kayıt Zamanı": new Date(m.created_at).toLocaleString(),
+                "Güncelleme Zamanı": new Date(m.created_at).getTime() === new Date(m.updated_at).getTime() ? '-' : new Date(m.updated_at).toLocaleString()
+            };
         });
-        
-        setDisplayedData(finalReportData);
+    
+        // --- 2. Process Transfer Movements ---
+        let transferReportData: any[] = [];
+        if (filters.transactionType === 'all' || filters.transactionType === 'TRANSFER') {
+            const transferMovements = movements.filter(m => m.transaction_type === 'TRANSFER');
+            
+            const transfersByVoucher = transferMovements.reduce((acc, m) => {
+                if (!acc[m.voucher_number]) acc[m.voucher_number] = [];
+                acc[m.voucher_number].push(m);
+                return acc;
+            }, {} as Record<string, StockMovement[]>);
+    
+            const transferPairs: {out: StockMovement, in: StockMovement}[] = [];
+            Object.values(transfersByVoucher).forEach(voucherMovements => {
+                const outs = voucherMovements.filter(m => m.type === 'OUT');
+                let ins = [...voucherMovements.filter(m => m.type === 'IN')];
+    
+                outs.forEach(outItem => {
+                    const matchIndex = ins.findIndex(inItem => 
+                        inItem.product_id === outItem.product_id && 
+                        inItem.quantity === outItem.quantity
+                    );
+    
+                    if (matchIndex > -1) {
+                        const inItem = ins[matchIndex];
+                        transferPairs.push({ out: outItem, in: inItem });
+                        ins.splice(matchIndex, 1);
+                    }
+                });
+            });
+    
+            const filteredPairs = transferPairs.filter(pair => {
+                const { out, in: inMov } = pair;
+                const itemDate = new Date(out.date);
+                if (filters.startDate && itemDate < new Date(filters.startDate)) return false;
+                if (filters.endDate) {
+                    const endDate = new Date(filters.endDate);
+                    endDate.setHours(23, 59, 59, 999);
+                    if (itemDate > endDate) return false;
+                }
+                if (filters.warehouseId && (out.warehouse_id !== filters.warehouseId && inMov.warehouse_id !== filters.warehouseId)) return false;
+                if (filters.shelfId && (out.shelf_id !== filters.shelfId && inMov.shelf_id !== filters.shelfId)) return false;
+                if (filters.productId && out.product_id !== filters.productId) return false;
+                if (filters.productGroupId) {
+                    const product = findById(products, out.product_id);
+                    if (!product || product.group_id !== filters.productGroupId) return false;
+                }
+                if (filters.notes && !out.notes?.toLowerCase().includes(filters.notes.toLowerCase().trim())) return false;
+                
+                return true;
+            });
+            
+            transferReportData = filteredPairs.map(pair => {
+                const { out, in: inMov } = pair;
+                const product = findById(products, out.product_id);
+                const outWarehouse = findById(warehouses, out.warehouse_id);
+                const outShelf = findById(shelves, out.shelf_id);
+                const inWarehouse = findById(warehouses, inMov.warehouse_id);
+                const inShelf = findById(shelves, inMov.shelf_id);
+                
+                return {
+                    "Tarih": new Date(out.date).toLocaleDateString(),
+                    "Fiş No": out.voucher_number,
+                    "İşlem Türü": "Transfer",
+                    "Ürün Adı": product?.name,
+                    "Miktar": formatNumber(out.quantity),
+                    "Birim": getUnitAbbr(out.product_id),
+                    "Çıkan Depo": outWarehouse?.name,
+                    "Çıkan Raf": outShelf?.name || '-',
+                    "Giren Depo": inWarehouse?.name,
+                    "Giren Raf": inShelf?.name || '-',
+                    "İlgili Cari": '-',
+                    "Not": out.notes,
+                    "Kayıt Zamanı": new Date(out.created_at).toLocaleString(),
+                    "Güncelleme Zamanı": new Date(out.created_at).getTime() === new Date(out.updated_at).getTime() ? '-' : new Date(out.updated_at).toLocaleString()
+                };
+            });
+        }
+    
+        // --- 3. Combine and set data ---
+        setDisplayedData([...nonTransferReportData, ...transferReportData]);
     };
 
     const requestSort = (key: string, event: React.MouseEvent) => {

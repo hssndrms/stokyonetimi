@@ -27,12 +27,19 @@
         "scope": [
           "$DOWNLOAD/*"
         ]
+        "scope": [
+          "$DOWNLOAD/*"
+        ]
       },
       "notification": {
         "all": true
       },
       "http": {
+      "http": {
         "all": true,
+        "scope": [
+          "https://*.supabase.co/*"
+        ]
         "scope": [
           "https://*.supabase.co/*"
         ]
