@@ -1,104 +1,107 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Shelf, ModalState, Unit, StockItem, Product, Warehouse, ProductGroup } from '../../types';
 import { useToast } from '../../context/ToastContext';
 import { PlusIcon, TrashIcon } from '../icons';
 import SearchableSelect from '../SearchableSelect';
 import { formLabelClass, formInputSmallClass } from '../../styles/common';
 import { ModalComponentProps } from './ModalComponentProps';
-import { formatNumber } from '../../utils/helpers';
+import { formatNumber, findById } from '../../utils/helpers';
 
 type Line = { 
     id: number | string, 
     productGroupId: string, 
     productId: string, 
-    quantity: string 
+    quantity: string,
+    shelfId: string,
 };
 type Header = { 
     date: string, 
     notes: string,
     sourceWarehouseId: string,
-    sourceShelfId: string,
-    destWarehouseId: string,
-    destShelfId: string
+    destWarehouseId: string
 };
 
-interface ProductionVoucherFormModalProps extends ModalComponentProps<{ voucher_number?: string }> {
+interface ProductionVoucherFormModalProps extends ModalComponentProps<{ 
+    voucher_number?: string,
+    restoredState?: { header: Header, consumed: Line[], produced: Line[] }
+}> {
     isEdit: boolean;
     setModal: (modal: ModalState) => void;
 }
 
-// LineRow component is moved outside of the main component to prevent re-creation on every render,
-// which solves the input focus loss issue.
 const LineRow: React.FC<{
     line: Line;
     lineType: 'consumed' | 'produced';
     onLineChange: (id: number | string, field: keyof Omit<Line, 'id'>, value: string) => void;
     onRemove: (id: number | string) => void;
     isRemovalDisabled: boolean;
+    availableShelves: Shelf[];
     productGroups: ProductGroup[];
+    productOptionsWithSku: { id: string; name: string | undefined; }[];
     products: Product[];
     getProductSku: (productId: string) => string;
-    stockInfo: string;
+    getUnitAbbrForProduct: (productId: string) => string;
+    showStock: boolean;
+    getStockInfo: (productId: string, warehouseId: string, shelfId: string) => string;
+    header: Header;
+    isEditMode: boolean;
+    shelves: Shelf[];
+    stockItems: StockItem[];
     errors: any;
-}> = ({
-    line,
-    lineType,
-    onLineChange,
-    onRemove,
-    isRemovalDisabled,
-    productGroups,
-    products,
-    getProductSku,
-    stockInfo,
-    errors
+}> = React.memo(({ 
+    line, lineType, onLineChange, onRemove, isRemovalDisabled, availableShelves, 
+    productGroups, productOptionsWithSku, products, getProductSku, getUnitAbbrForProduct, 
+    showStock, getStockInfo, header, isEditMode, shelves, stockItems, errors 
 }) => {
-    const sku = getProductSku(line.productId);
     
+    const availableProductsForLine = useMemo(() => {
+        if (!line.productGroupId) return [];
+        const productIdsInGroup = new Set(products.filter(p => p.group_id === line.productGroupId).map(p => p.id));
+        return productOptionsWithSku.filter(p => productIdsInGroup.has(p.id));
+    }, [line.productGroupId, productOptionsWithSku, products]);
+    
+    const shelvesForLine = (() => {
+        if (lineType === 'produced') return availableShelves;
+        
+        // Tüketilen malzemeler için, sadece stoğu olan rafları göster
+        if (!line.productId || !header.sourceWarehouseId) return [];
+        
+        const shelfIdsWithStock = stockItems
+            .filter(si => si.product_id === line.productId && si.warehouse_id === header.sourceWarehouseId && si.quantity > 0 && si.shelf_id)
+            .map(si => si.shelf_id);
+        
+        const shelvesWithStock = shelves.filter(shelf => shelf.warehouse_id === header.sourceWarehouseId && shelfIdsWithStock.includes(shelf.id));
+
+        // Düzenleme modunda, stoğu bitmiş olsa bile önceden seçili rafı listeye ekle
+        if (isEditMode && line.shelfId && !shelvesWithStock.some(s => s.id === line.shelfId)) {
+            const savedShelf = findById(shelves, line.shelfId);
+            if (savedShelf && savedShelf.warehouse_id === header.sourceWarehouseId) {
+                return Array.from(new Set([...shelvesWithStock, savedShelf]));
+            }
+        }
+        
+        return shelvesWithStock;
+    })();
+
     return (
         <tr className="table-row border-t dark:border-slate-700">
-            <td className="table-cell p-2 w-[25%]">
-                <SearchableSelect 
-                    options={productGroups} 
-                    value={line.productGroupId} 
-                    onChange={val => onLineChange(line.id, 'productGroupId', val)} 
-                    placeholder="Grup Seçin" 
-                />
+            <td className="p-2 w-[20%]"><SearchableSelect options={productGroups} value={line.productGroupId} onChange={val => onLineChange(line.id, 'productGroupId', val)} placeholder="Grup Seçin" /></td>
+            <td className="p-2 w-[15%] align-middle font-mono text-slate-600 dark:text-slate-400">{getProductSku(line.productId)}</td>
+            <td className="p-2 w-[20%]"><SearchableSelect options={availableProductsForLine} value={line.productId} onChange={val => onLineChange(line.id, 'productId', val)} placeholder="Ürün Seçin" disabled={!line.productGroupId} error={errors[lineType]?.[line.id]?.productId} /></td>
+            <td className="p-2 w-[15%]">
+                 <SearchableSelect options={shelvesForLine} value={line.shelfId} onChange={val => onLineChange(line.id, 'shelfId', val)} placeholder={availableShelves.length > 0 ? "Raf Seçin" : "Raf Bulunmuyor"} disabled={availableShelves.length === 0} error={errors[lineType]?.[line.id]?.shelfId}/>
             </td>
-            <td className="table-cell p-2 w-[15%]"><input type="text" value={sku} className={`${formInputSmallClass} bg-slate-100 dark:bg-slate-700 font-mono`} readOnly /></td>
-            <td className="table-cell p-2 w-[30%]">
-                <SearchableSelect 
-                    options={line.productGroupId ? products.filter(p => p.group_id === line.productGroupId) : []} 
-                    value={line.productId} 
-                    onChange={val => onLineChange(line.id, 'productId', val)} 
-                    placeholder="Ürün Seçin" 
-                    disabled={!line.productGroupId} 
-                    error={errors[lineType]?.[line.id]?.productId} 
-                />
+            <td className="p-2 w-[10%] text-slate-600 dark:text-slate-400 font-medium text-right align-middle">{getStockInfo(line.productId, lineType === 'consumed' ? header.sourceWarehouseId : header.destWarehouseId, line.shelfId)}</td>
+            <td className="p-2 w-[15%]">
+                 <div className="flex items-center">
+                    <input type="number" step="any" min="0.01" value={line.quantity} onChange={e => onLineChange(line.id, 'quantity', e.target.value)} className={`${formInputSmallClass} ${errors[lineType]?.[line.id]?.quantity ? 'border-red-500' : ''} w-full text-right`} />
+                    <span className="text-sm text-slate-500 dark:text-slate-400 font-medium pl-2 w-12 text-left">{getUnitAbbrForProduct(line.productId)}</span>
+                </div>
             </td>
-            <td className="table-cell p-2 w-[15%] text-slate-600 dark:text-slate-400 font-medium text-right">{stockInfo}</td>
-            <td className="table-cell p-2 w-[10%]">
-                <input 
-                    type="number" 
-                    step="any" 
-                    min="0.01" 
-                    value={line.quantity} 
-                    onChange={e => onLineChange(line.id, 'quantity', e.target.value)} 
-                    className={`${formInputSmallClass} ${errors[lineType]?.[line.id]?.quantity ? 'border-red-500' : ''}`} 
-                />
-            </td>
-            <td className="table-cell p-2 w-[5%] text-center">
-                <button 
-                    type="button" 
-                    onClick={() => onRemove(line.id)} 
-                    className="remove-line-button text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400 disabled:text-slate-300 dark:disabled:text-slate-600" 
-                    disabled={isRemovalDisabled}
-                >
-                    <TrashIcon />
-                </button>
-            </td>
+            <td className="p-2 w-[5%] text-center"><button type="button" onClick={() => onRemove(line.id)} className="remove-line-button text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400 disabled:text-slate-300 dark:disabled:text-slate-600" disabled={isRemovalDisabled}><TrashIcon /></button></td>
         </tr>
     );
-};
+});
 
 
 const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({ 
@@ -110,6 +113,10 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
     const isEditMode = !!(isEdit && data?.voucher_number);
 
     const initializeState = () => {
+        if (data?.restoredState) {
+            return data.restoredState;
+        }
+
         if (isEditMode) {
             const movements = stockMovements.filter(m => m.voucher_number === data.voucher_number);
             if (movements.length > 0) {
@@ -120,21 +127,20 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
                     date: new Date(movements[0].date).toISOString().slice(0, 10),
                     notes: movements[0].notes || '',
                     sourceWarehouseId: outMovement?.warehouse_id || '',
-                    sourceShelfId: outMovement?.shelf_id || '',
-                    destWarehouseId: inMovement?.warehouse_id || '',
-                    destShelfId: inMovement?.shelf_id || ''
+                    destWarehouseId: inMovement?.warehouse_id || ''
                 };
 
                 const mapMovementsToLines = (type: 'IN' | 'OUT'): Line[] => {
                     const filteredMovements = movements.filter(m => m.type === type);
-                    if (filteredMovements.length === 0) return [{ id: Date.now() + Math.random(), productGroupId: '', productId: '', quantity: '1' }];
+                    if (filteredMovements.length === 0) return [{ id: Date.now() + Math.random(), productGroupId: '', productId: '', quantity: '1', shelfId: '' }];
                     return filteredMovements.map(m => {
                         const product = products.find(p => p.id === m.product_id);
                         return {
-                            id: m.id, // Use stable movement ID as key
+                            id: m.id,
                             productGroupId: product?.group_id || '',
                             productId: m.product_id,
-                            quantity: String(m.quantity)
+                            quantity: String(m.quantity),
+                            shelfId: m.shelf_id || ''
                         };
                     });
                 };
@@ -145,16 +151,15 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
                 return { header: headerData, consumed, produced };
             }
         }
-        // Default state for new voucher
         return {
             header: {
                 date: new Date().toISOString().slice(0, 10),
                 notes: '',
-                sourceWarehouseId: '', sourceShelfId: '',
-                destWarehouseId: '', destShelfId: '',
+                sourceWarehouseId: '',
+                destWarehouseId: '',
             },
-            consumed: [{ id: Date.now(), productGroupId: '', productId: '', quantity: '1' }],
-            produced: [{ id: Date.now() + 1, productGroupId: '', productId: '', quantity: '1' }],
+            consumed: [{ id: Date.now(), productGroupId: '', productId: '', quantity: '1', shelfId: '' }],
+            produced: [{ id: Date.now() + 1, productGroupId: '', productId: '', quantity: '1', shelfId: '' }],
         };
     };
 
@@ -168,6 +173,18 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
 
     const [availableSourceShelves, setAvailableSourceShelves] = useState<Shelf[]>([]);
     const [availableDestShelves, setAvailableDestShelves] = useState<Shelf[]>([]);
+
+    const productOptionsWithSku = useMemo(() => products.map(p => ({
+        id: p.id,
+        name: `${p.name} (${p.sku})`
+    })), [products]);
+
+    const getUnitAbbrForProduct = (productId: string): string => {
+        const product = findById(products, productId);
+        if (!product) return '';
+        const unit = findById(units, product.unit_id);
+        return unit?.abbreviation || '';
+    };
     
     useEffect(() => {
         const fetchVoucherNumber = async () => {
@@ -184,29 +201,35 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
     useEffect(() => {
         const shelvesForWarehouse = header.sourceWarehouseId ? shelves.filter(s => s.warehouse_id === header.sourceWarehouseId) : [];
         setAvailableSourceShelves(shelvesForWarehouse);
-        // If the currently selected shelf doesn't belong to the new warehouse, reset it
-        if (header.sourceShelfId && !shelvesForWarehouse.some(s => s.id === header.sourceShelfId)) {
-            setHeader(h => ({ ...h, sourceShelfId: '' }));
-        }
     }, [header.sourceWarehouseId, shelves]);
 
     useEffect(() => {
         const shelvesForWarehouse = header.destWarehouseId ? shelves.filter(s => s.warehouse_id === header.destWarehouseId) : [];
         setAvailableDestShelves(shelvesForWarehouse);
-        // If the currently selected shelf doesn't belong to the new warehouse, reset it
-        if (header.destShelfId && !shelvesForWarehouse.some(s => s.id === header.destShelfId)) {
-            setHeader(h => ({ ...h, destShelfId: '' }));
-        }
     }, [header.destWarehouseId, shelves]);
 
-    const handleHeaderChange = (field: keyof Header, value: string) => setHeader(h => ({ ...h, [field]: value }));
+    const handleHeaderChange = (field: keyof Header, value: string) => {
+        setHeader(h => ({ ...h, [field]: value }));
+        if (field === 'sourceWarehouseId') {
+            setConsumedLines(ls => ls.map(l => ({...l, shelfId: ''})));
+        }
+        if (field === 'destWarehouseId') {
+            setProducedLines(ls => ls.map(l => ({...l, shelfId: ''})));
+        }
+    };
 
     const handleLineChange = (lineType: 'consumed' | 'produced', id: number | string, field: keyof Omit<Line, 'id'>, value: string) => {
         const setLines = lineType === 'consumed' ? setConsumedLines : setProducedLines;
         setLines(lines => lines.map(line => {
             if (line.id === id) {
                 const updatedLine = { ...line, [field]: value };
-                if (field === 'productGroupId') updatedLine.productId = '';
+                if (field === 'productGroupId') {
+                    updatedLine.productId = '';
+                    updatedLine.shelfId = '';
+                }
+                 if (field === 'productId') {
+                    updatedLine.shelfId = '';
+                }
                 return updatedLine;
             }
             return line;
@@ -215,7 +238,7 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
 
     const addLine = (lineType: 'consumed' | 'produced') => {
         const setLines = lineType === 'consumed' ? setConsumedLines : setProducedLines;
-        setLines(lines => [...lines, { id: Date.now() + Math.random(), productGroupId: '', productId: '', quantity: '1' }]);
+        setLines(lines => [...lines, { id: Date.now() + Math.random(), productGroupId: '', productId: '', quantity: '1', shelfId: '' }]);
     };
     
     const removeLine = (lineType: 'consumed' | 'produced', id: number | string) => {
@@ -228,18 +251,22 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
         }
     };
 
-    const getProductSku = (productId: string) => products.find(p => p.id === productId)?.sku || '';
+    const getProductSku = (productId: string) => findById(products, productId)?.sku || '';
     
     const getStockInfo = (productId: string, warehouseId: string, shelfId: string): string => {
         if (!showStock || !productId || !warehouseId) return '';
+        
+        const allShelvesInWarehouse = shelves.filter(s => s.warehouse_id === warehouseId);
+        if (allShelvesInWarehouse.length > 0 && !shelfId) return '';
+        
         const effectiveShelfId = shelfId === '' ? null : shelfId;
         const stockItem = stockItems.find(item => 
             item.product_id === productId && 
             item.warehouse_id === warehouseId && 
             item.shelf_id === effectiveShelfId
         );
-        const product = products.find(p => p.id === productId);
-        const unit = units.find(u => u.id === product?.unit_id);
+        const product = findById(products, productId);
+        const unit = findById(units, product?.unit_id);
         
         return `${formatNumber(stockItem?.quantity || 0)} ${unit?.abbreviation || ''}`;
     };
@@ -251,21 +278,20 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
         let isValid = true;
         
         if (!header.sourceWarehouseId) { isValid = false; validationErrors.header.sourceWarehouseId = true; }
-        if (availableSourceShelves.length > 0 && !header.sourceShelfId) { isValid = false; validationErrors.header.sourceShelfId = true; }
         if (!header.destWarehouseId) { isValid = false; validationErrors.header.destWarehouseId = true; }
-        if (availableDestShelves.length > 0 && !header.destShelfId) { isValid = false; validationErrors.header.destShelfId = true; }
         
-        const validateLines = (lines: Line[], type: 'consumed' | 'produced') => {
+        const validateLines = (lines: Line[], type: 'consumed' | 'produced', availableShelves: Shelf[]) => {
             lines.forEach(line => {
                 const lineErrors: any = {};
                 if (!line.productId) { isValid = false; lineErrors.productId = true; }
                 if (parseFloat(line.quantity) <= 0 || isNaN(parseFloat(line.quantity))) { isValid = false; lineErrors.quantity = true; }
+                if (availableShelves.length > 0 && !line.shelfId) {isValid = false; lineErrors.shelfId = true;}
                 if (Object.keys(lineErrors).length > 0) validationErrors[type][line.id] = lineErrors;
             });
         };
 
-        validateLines(consumedLines, 'consumed');
-        validateLines(producedLines, 'produced');
+        validateLines(consumedLines, 'consumed', availableSourceShelves);
+        validateLines(producedLines, 'produced', availableDestShelves);
 
         setErrors(validationErrors);
 
@@ -278,14 +304,13 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
             date: header.date,
             notes: header.notes,
             source_warehouse_id: header.sourceWarehouseId,
-            source_shelf_id: header.sourceShelfId || null,
-            dest_warehouse_id: header.destWarehouseId,
-            dest_shelf_id: header.destShelfId || null
+            dest_warehouse_id: header.destWarehouseId
         };
 
         const mapLinesForApi = (lines: Line[]) => lines.map(l => ({
             product_id: l.productId,
-            quantity: parseFloat(l.quantity)
+            quantity: parseFloat(l.quantity),
+            shelf_id: l.shelfId || null
         }));
 
         let success = false;
@@ -312,6 +337,54 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
         });
     };
 
+    const handleAddNewProduct = (lineType: 'consumed' | 'produced') => {
+        const currentModalType = isEditMode ? 'EDIT_PRODUCTION_VOUCHER' : 'ADD_PRODUCTION_VOUCHER';
+    
+        setModal({
+            type: 'ADD_PRODUCT',
+            data: {
+                onSuccess: (newProduct: { id: string, group_id: string }) => {
+                    const newLine = {
+                        id: Date.now() + Math.random(),
+                        productGroupId: newProduct.group_id,
+                        productId: newProduct.id,
+                        quantity: '1',
+                        shelfId: ''
+                    };
+    
+                    const restoredState = {
+                        header: header,
+                        consumed: lineType === 'consumed' ? [...consumedLines, newLine] : consumedLines,
+                        produced: lineType === 'produced' ? [...producedLines, newLine] : producedLines
+                    };
+    
+                    setModal({
+                        type: currentModalType,
+                        data: {
+                            ...data,
+                            restoredState: restoredState
+                        }
+                    });
+                }
+            }
+        });
+    };
+
+    const lineRowProps = {
+        productGroups,
+        productOptionsWithSku,
+        products,
+        getProductSku,
+        getUnitAbbrForProduct,
+        showStock,
+        getStockInfo,
+        header,
+        isEditMode,
+        shelves,
+        stockItems,
+        errors,
+    };
+
     return (
         <form id="production-voucher-form" onSubmit={handleSubmit}>
             <div className="space-y-6">
@@ -324,122 +397,54 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
                     </div>
                 </fieldset>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <fieldset id="source-location-info" className="form-fieldset border dark:border-slate-600 p-4 rounded-md">
-                        <legend className="form-legend text-md font-medium text-slate-700 dark:text-slate-300 px-2 -mb-3">Kaynak Konum</legend>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                            <div>
-                                <label className={formLabelClass}>Çıkan Depo</label>
-                                <SearchableSelect options={warehouses} value={header.sourceWarehouseId} onChange={val => handleHeaderChange('sourceWarehouseId', val)} placeholder="Depo Seçin" error={errors.header?.sourceWarehouseId}/>
-                            </div>
-                            <div>
-                                <label className={formLabelClass}>Çıkan Raf</label>
-                                <SearchableSelect options={availableSourceShelves} value={header.sourceShelfId} onChange={val => handleHeaderChange('sourceShelfId', val)} placeholder={!header.sourceWarehouseId ? "Önce Depo Seçin" : availableSourceShelves.length === 0 ? "Raf bulunmuyor" : "Raf Seçin"} disabled={!header.sourceWarehouseId || availableSourceShelves.length === 0} error={errors.header?.sourceShelfId} />
-                            </div>
-                        </div>
-                    </fieldset>
-                     <fieldset id="destination-location-info" className="form-fieldset border dark:border-slate-600 p-4 rounded-md">
+                <div id="produced-products-section">
+                     <h3 className="section-title text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">Üretilen Ürünler (Girdi)</h3>
+                     <fieldset className="border dark:border-slate-600 p-4 rounded-md">
                         <legend className="form-legend text-md font-medium text-slate-700 dark:text-slate-300 px-2 -mb-3">Hedef Konum</legend>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                           <div>
-                                <label className={formLabelClass}>Giren Depo</label>
-                                <SearchableSelect options={warehouses} value={header.destWarehouseId} onChange={val => handleHeaderChange('destWarehouseId', val)} placeholder="Depo Seçin" error={errors.header?.destWarehouseId}/>
-                            </div>
-                            <div>
-                                <label className={formLabelClass}>Giren Raf</label>
-                                <SearchableSelect options={availableDestShelves} value={header.destShelfId} onChange={val => handleHeaderChange('destShelfId', val)} placeholder={!header.destWarehouseId ? "Önce Depo Seçin" : availableDestShelves.length === 0 ? "Raf bulunmuyor" : "Raf Seçin"} disabled={!header.destWarehouseId || availableDestShelves.length === 0} error={errors.header?.destShelfId} />
-                            </div>
-                        </div>
+                        <div className="pt-4"><label className={formLabelClass}>Giren Depo</label><SearchableSelect options={warehouses} value={header.destWarehouseId} onChange={val => handleHeaderChange('destWarehouseId', val)} placeholder="Depo Seçin" error={errors.header?.destWarehouseId}/></div>
                     </fieldset>
-                </div>
-
-                 <div id="produced-products-section">
-                    <div className="flex justify-between items-center mb-2">
-                         <h3 className="section-title text-lg font-bold text-slate-800 dark:text-slate-100">Üretilen Ürünler (Girdi)</h3>
-                         <button id="add-produced-line-button" type="button" onClick={() => addLine('produced')} className="font-semibold py-1 px-3 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500"><PlusIcon /> Satır Ekle</button>
-                    </div>
-                    <div className="data-table-container border dark:border-slate-700 rounded-md">
-                        <table className="data-table w-full text-left text-sm min-w-[700px]">
+                    <div className="data-table-container border dark:border-slate-700 rounded-md mt-4 overflow-x-auto">
+                        <table className="data-table w-full text-left text-sm min-w-[900px]">
                             <thead className="table-header bg-slate-50 dark:bg-slate-700/50">
                                 <tr>
-                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[25%]">Ürün Grubu</th>
-                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Ürün Kodu</th>
-                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[30%]">Ürün Adı</th>
-                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%] text-right">Mevcut Stok</th>
-                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[10%]">Miktar</th>
-                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[5%]"></th>
+                                    <th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[20%]">Ürün Grubu</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Ürün Kodu</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[20%]">Ürün Adı</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Raf</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[10%] text-right">Mevcut Stok</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Miktar</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[5%]"></th>
                                 </tr>
                             </thead>
-                            <tbody className="table-body">{producedLines.map(line => {
-                                const warehouseId = header.destWarehouseId;
-                                const shelfId = header.destShelfId;
-                                const stock = getStockInfo(line.productId, warehouseId, shelfId);
-                                return (
-                                    <LineRow
-                                        key={line.id}
-                                        line={line}
-                                        lineType="produced"
-                                        onLineChange={(id, field, value) => handleLineChange('produced', id, field, value)}
-                                        onRemove={(id) => removeLine('produced', id)}
-                                        isRemovalDisabled={producedLines.length <= 1}
-                                        productGroups={productGroups}
-                                        products={products}
-                                        getProductSku={getProductSku}
-                                        stockInfo={stock}
-                                        errors={errors}
-                                    />
-                                );
-                            })}</tbody>
+                            <tbody className="table-body">{producedLines.map(line => (
+                                <LineRow key={line.id} line={line} lineType="produced" onLineChange={(id, field, value) => handleLineChange('produced', id, field, value)} onRemove={(id) => removeLine('produced', id)} isRemovalDisabled={producedLines.length <= 1} availableShelves={availableDestShelves} {...lineRowProps} />
+                            ))}</tbody>
                         </table>
+                    </div>
+                     <div className="flex justify-end mt-2 gap-2">
+                        <button id="add-new-produced-product-button" type="button" onClick={() => handleAddNewProduct('produced')} className="font-semibold py-1 px-3 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-sky-200 text-sky-800 hover:bg-sky-300 dark:bg-sky-900/40 dark:text-sky-200 dark:hover:bg-sky-900/60"><PlusIcon /> Yeni Ürün Ekle</button>
+                        <button id="add-produced-line-button" type="button" onClick={() => addLine('produced')} className="font-semibold py-1 px-3 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500"><PlusIcon /> Satır Ekle</button>
                     </div>
                 </div>
 
                 <div id="consumed-materials-section">
-                    <div className="flex justify-between items-center mb-2">
-                         <h3 className="section-title text-lg font-bold text-slate-800 dark:text-slate-100">Kullanılan Malzemeler (Gider)</h3>
-                         <div className="flex items-center gap-4">
-                             <button id="toggle-stock-visibility-button" type="button" onClick={() => setShowStock(s => !s)} disabled={!header.sourceWarehouseId} className="font-semibold py-1 px-3 text-xs rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-sky-100 text-sky-800 hover:bg-sky-200 dark:bg-sky-900/40 dark:text-sky-200 dark:hover:bg-sky-900/60 disabled:bg-slate-100 dark:disabled:bg-slate-700 disabled:text-slate-400 dark:disabled:text-slate-500 disabled:cursor-not-allowed">
-                                <i className={`fa-solid fa-fw ${showStock ? 'fa-eye-slash' : 'fa-eye'}`}></i> {showStock ? 'Stokları Gizle' : 'Mevcut Stokları Göster'}
-                            </button>
-                            <button id="add-consumed-line-button" type="button" onClick={() => addLine('consumed')} className="font-semibold py-1 px-3 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500"><PlusIcon /> Satır Ekle</button>
-                         </div>
-                    </div>
-                    <div className="data-table-container border dark:border-slate-700 rounded-md">
-                        <table className="data-table w-full text-left text-sm min-w-[700px]">
+                     <h3 className="section-title text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">Kullanılan Malzemeler (Gider)</h3>
+                     <fieldset className="border dark:border-slate-600 p-4 rounded-md">
+                        <legend className="form-legend text-md font-medium text-slate-700 dark:text-slate-300 px-2 -mb-3">Kaynak Konum</legend>
+                         <div className="pt-4"><label className={formLabelClass}>Çıkan Depo</label><SearchableSelect options={warehouses} value={header.sourceWarehouseId} onChange={val => handleHeaderChange('sourceWarehouseId', val)} placeholder="Depo Seçin" error={errors.header?.sourceWarehouseId}/></div>
+                    </fieldset>
+                    <div className="data-table-container border dark:border-slate-700 rounded-md mt-4 overflow-x-auto">
+                        <table className="data-table w-full text-left text-sm min-w-[900px]">
                             <thead className="table-header bg-slate-50 dark:bg-slate-700/50">
                                 <tr>
-                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[25%]">Ürün Grubu</th>
-                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Ürün Kodu</th>
-                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[30%]">Ürün Adı</th>
-                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%] text-right">Mevcut Stok</th>
-                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[10%]">Miktar</th>
-                                    <th className="table-header-cell p-2 font-semibold text-slate-600 dark:text-slate-300 w-[5%]"></th>
+                                    <th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[20%]">Ürün Grubu</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Ürün Kodu</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[20%]">Ürün Adı</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Raf</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[10%] text-right">Mevcut Stok</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[15%]">Miktar</th><th className="p-2 font-semibold text-slate-600 dark:text-slate-300 w-[5%]"></th>
                                 </tr>
                             </thead>
-                            <tbody className="table-body">{consumedLines.map(line => {
-                                const warehouseId = header.sourceWarehouseId;
-                                const shelfId = header.sourceShelfId;
-                                const stock = getStockInfo(line.productId, warehouseId, shelfId);
-                                return (
-                                    <LineRow
-                                        key={line.id}
-                                        line={line}
-                                        lineType="consumed"
-                                        onLineChange={(id, field, value) => handleLineChange('consumed', id, field, value)}
-                                        onRemove={(id) => removeLine('consumed', id)}
-                                        isRemovalDisabled={consumedLines.length <= 1}
-                                        productGroups={productGroups}
-                                        products={products}
-                                        getProductSku={getProductSku}
-                                        stockInfo={stock}
-                                        errors={errors}
-                                    />
-                                );
-                            })}</tbody>
+                            <tbody className="table-body">{consumedLines.map(line => (
+                                <LineRow key={line.id} line={line} lineType="consumed" onLineChange={(id, field, value) => handleLineChange('consumed', id, field, value)} onRemove={(id) => removeLine('consumed', id)} isRemovalDisabled={consumedLines.length <= 1} availableShelves={availableSourceShelves} {...lineRowProps} />
+                            ))}</tbody>
                         </table>
                     </div>
+                    <div className="flex justify-end mt-2 gap-2">
+                         <button id="toggle-stock-visibility-button" type="button" onClick={() => setShowStock(s => !s)} disabled={!header.sourceWarehouseId} className="font-semibold py-1 px-3 text-xs rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-sky-100 text-sky-800 hover:bg-sky-200 dark:bg-sky-900/40 dark:text-sky-200 dark:hover:bg-sky-900/60 disabled:bg-slate-100 dark:disabled:bg-slate-700 disabled:text-slate-400 dark:disabled:text-slate-500 disabled:cursor-not-allowed"><i className={`fa-solid fa-fw ${showStock ? 'fa-eye-slash' : 'fa-eye'}`}></i> {showStock ? 'Stokları Gizle' : 'Mevcut Stokları Göster'}</button>
+                         <button id="add-new-consumed-product-button" type="button" onClick={() => handleAddNewProduct('consumed')} className="font-semibold py-1 px-3 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-sky-200 text-sky-800 hover:bg-sky-300 dark:bg-sky-900/40 dark:text-sky-200 dark:hover:bg-sky-900/60"><PlusIcon /> Yeni Ürün Ekle</button>
+                        <button id="add-consumed-line-button" type="button" onClick={() => addLine('consumed')} className="font-semibold py-1 px-3 text-sm rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500"><PlusIcon /> Satır Ekle</button>
+                     </div>
                 </div>
-
             </div>
 
              <div className="modal-actions flex justify-between items-center mt-6 pt-4 border-t dark:border-slate-700">

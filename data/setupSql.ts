@@ -1,5 +1,5 @@
 export const SETUP_SQL = `
--- Stok Takip Uygulaması Kurulum Betiği v1.3.4
+-- Stok Takip Uygulaması Kurulum Betiği v1.4.0
 -- Bu betik, uygulamanın ihtiyaç duyduğu tüm tabloları, fonksiyonları ve güvenlik kurallarını oluşturur.
 -- Supabase projenizdeki SQL Editor'e yapıştırıp çalıştırın.
 
@@ -368,7 +368,7 @@ BEGIN
             (line->>'product_id')::uuid,
             (line->>'quantity')::numeric,
             (header_data->>'warehouse_id')::uuid,
-            (header_data->>'shelf_id')::uuid,
+            (line->>'shelf_id')::uuid, -- Satırdan raf al
             'IN',
             (header_data->>'date')::date,
             header_data->>'source_or_destination',
@@ -379,7 +379,7 @@ BEGIN
         PERFORM public.process_stock_movement(
             (line->>'product_id')::uuid,
             (header_data->>'warehouse_id')::uuid,
-            (header_data->>'shelf_id')::uuid,
+            (line->>'shelf_id')::uuid, -- Satırdan raf al
             (line->>'quantity')::numeric,
             'IN'
         );
@@ -404,7 +404,7 @@ BEGIN
             (line->>'product_id')::uuid,
             (line->>'quantity')::numeric,
             (header_data->>'warehouse_id')::uuid,
-            (header_data->>'shelf_id')::uuid,
+            (line->>'shelf_id')::uuid, -- Satırdan raf al
             'OUT',
             (header_data->>'date')::date,
             header_data->>'source_or_destination',
@@ -415,7 +415,7 @@ BEGIN
         PERFORM public.process_stock_movement(
             (line->>'product_id')::uuid,
             (header_data->>'warehouse_id')::uuid,
-            (header_data->>'shelf_id')::uuid,
+            (line->>'shelf_id')::uuid, -- Satırdan raf al
             (line->>'quantity')::numeric,
             'OUT'
         );
@@ -429,43 +429,43 @@ CREATE OR REPLACE FUNCTION public.stock_transfer(header_data json, lines_data js
 RETURNS void LANGUAGE plpgsql AS $$
 DECLARE
     voucher_num TEXT;
-    line JSONB;
+    line RECORD;
 BEGIN
     voucher_num := public.get_next_voucher_number('TRANSFER');
     
-    FOR line IN SELECT * FROM jsonb_array_elements(lines_data)
+    FOR line IN SELECT * FROM jsonb_to_recordset(lines_data) as x(product_id uuid, quantity numeric, source_shelf_id uuid, dest_shelf_id uuid)
     LOOP
         -- Çıkış hareketi
         INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes, transaction_type)
         VALUES (
             voucher_num,
-            (line->>'product_id')::uuid,
-            (line->>'quantity')::numeric,
+            line.product_id,
+            line.quantity,
             (header_data->>'source_warehouse_id')::uuid,
-            (header_data->>'source_shelf_id')::uuid,
+            line.source_shelf_id,
             'OUT',
             (header_data->>'date')::date,
             'Transfer',
             header_data->>'notes',
             'TRANSFER'
         );
-        PERFORM public.process_stock_movement((line->>'product_id')::uuid, (header_data->>'source_warehouse_id')::uuid, (header_data->>'source_shelf_id')::uuid, (line->>'quantity')::numeric, 'OUT');
+        PERFORM public.process_stock_movement(line.product_id, (header_data->>'source_warehouse_id')::uuid, line.source_shelf_id, line.quantity, 'OUT');
 
         -- Giriş hareketi
         INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes, transaction_type)
         VALUES (
             voucher_num,
-            (line->>'product_id')::uuid,
-            (line->>'quantity')::numeric,
+            line.product_id,
+            line.quantity,
             (header_data->>'dest_warehouse_id')::uuid,
-            (header_data->>'dest_shelf_id')::uuid,
+            line.dest_shelf_id,
             'IN',
             (header_data->>'date')::date,
             'Transfer',
             header_data->>'notes',
             'TRANSFER'
         );
-        PERFORM public.process_stock_movement((line->>'product_id')::uuid, (header_data->>'dest_warehouse_id')::uuid, (header_data->>'dest_shelf_id')::uuid, (line->>'quantity')::numeric, 'IN');
+        PERFORM public.process_stock_movement(line.product_id, (header_data->>'dest_warehouse_id')::uuid, line.dest_shelf_id, line.quantity, 'IN');
     END LOOP;
 END;
 $$;
@@ -544,7 +544,7 @@ BEGIN
             (line->>'product_id')::uuid,
             (line->>'quantity')::numeric,
             (header_data->>'warehouse_id')::uuid,
-            (header_data->>'shelf_id')::uuid,
+            (line->>'shelf_id')::uuid,
             movement_type,
             (header_data->>'date')::date,
             header_data->>'source_or_destination',
@@ -555,7 +555,7 @@ BEGIN
         PERFORM public.process_stock_movement(
             (line->>'product_id')::uuid,
             (header_data->>'warehouse_id')::uuid,
-            (header_data->>'shelf_id')::uuid,
+            (line->>'shelf_id')::uuid,
             (line->>'quantity')::numeric,
             movement_type
         );
@@ -568,23 +568,23 @@ $$;
 CREATE OR REPLACE FUNCTION public.edit_stock_transfer(p_voucher_number text, header_data json, lines_data jsonb)
 RETURNS void LANGUAGE plpgsql AS $$
 DECLARE
-    line JSONB;
+    line RECORD;
 BEGIN
     -- Eski hareketleri ve stok etkilerini geri al
     PERFORM public.delete_stock_voucher(p_voucher_number);
 
     -- Yeni hareketleri ekle
-    FOR line IN SELECT * FROM jsonb_array_elements(lines_data)
+    FOR line IN SELECT * FROM jsonb_to_recordset(lines_data) as x(product_id uuid, quantity numeric, source_shelf_id uuid, dest_shelf_id uuid)
     LOOP
         -- Çıkış
         INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes, transaction_type)
-        VALUES (p_voucher_number, (line->>'product_id')::uuid, (line->>'quantity')::numeric, (header_data->>'source_warehouse_id')::uuid, (header_data->>'source_shelf_id')::uuid, 'OUT', (header_data->>'date')::date, 'Transfer', header_data->>'notes', 'TRANSFER');
-        PERFORM public.process_stock_movement((line->>'product_id')::uuid, (header_data->>'source_warehouse_id')::uuid, (header_data->>'source_shelf_id')::uuid, (line->>'quantity')::numeric, 'OUT');
+        VALUES (p_voucher_number, line.product_id, line.quantity, (header_data->>'source_warehouse_id')::uuid, line.source_shelf_id, 'OUT', (header_data->>'date')::date, 'Transfer', header_data->>'notes', 'TRANSFER');
+        PERFORM public.process_stock_movement(line.product_id, (header_data->>'source_warehouse_id')::uuid, line.source_shelf_id, line.quantity, 'OUT');
 
         -- Giriş
         INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes, transaction_type)
-        VALUES (p_voucher_number, (line->>'product_id')::uuid, (line->>'quantity')::numeric, (header_data->>'dest_warehouse_id')::uuid, (header_data->>'dest_shelf_id')::uuid, 'IN', (header_data->>'date')::date, 'Transfer', header_data->>'notes', 'TRANSFER');
-        PERFORM public.process_stock_movement((line->>'product_id')::uuid, (header_data->>'dest_warehouse_id')::uuid, (header_data->>'dest_shelf_id')::uuid, (line->>'quantity')::numeric, 'IN');
+        VALUES (p_voucher_number, line.product_id, line.quantity, (header_data->>'dest_warehouse_id')::uuid, line.dest_shelf_id, 'IN', (header_data->>'date')::date, 'Transfer', header_data->>'notes', 'TRANSFER');
+        PERFORM public.process_stock_movement(line.product_id, (header_data->>'dest_warehouse_id')::uuid, line.dest_shelf_id, line.quantity, 'IN');
     END LOOP;
 END;
 $$;
@@ -600,7 +600,7 @@ BEGIN
     voucher_num := public.get_next_voucher_number('PRODUCTION');
     
     -- Tüketilen malzemeleri stoktan düş
-    FOR consumed_line IN SELECT * FROM jsonb_to_recordset(consumed_lines) as x(product_id uuid, quantity numeric)
+    FOR consumed_line IN SELECT * FROM jsonb_to_recordset(consumed_lines) as x(product_id uuid, quantity numeric, shelf_id uuid)
     LOOP
         INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes, transaction_type)
         VALUES (
@@ -608,7 +608,7 @@ BEGIN
             consumed_line.product_id,
             consumed_line.quantity,
             (header_data->>'source_warehouse_id')::uuid,
-            (header_data->>'source_shelf_id')::uuid,
+            consumed_line.shelf_id,
             'OUT',
             (header_data->>'date')::date,
             'Üretim Sarf',
@@ -618,14 +618,14 @@ BEGIN
         PERFORM public.process_stock_movement(
             consumed_line.product_id, 
             (header_data->>'source_warehouse_id')::uuid, 
-            (header_data->>'source_shelf_id')::uuid, 
+            consumed_line.shelf_id, 
             consumed_line.quantity, 
             'OUT'
         );
     END LOOP;
 
     -- Üretilen ürünleri stoğa ekle
-    FOR produced_line IN SELECT * FROM jsonb_to_recordset(produced_lines) as x(product_id uuid, quantity numeric)
+    FOR produced_line IN SELECT * FROM jsonb_to_recordset(produced_lines) as x(product_id uuid, quantity numeric, shelf_id uuid)
     LOOP
         INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes, transaction_type)
         VALUES (
@@ -633,7 +633,7 @@ BEGIN
             produced_line.product_id,
             produced_line.quantity,
             (header_data->>'dest_warehouse_id')::uuid,
-            (header_data->>'dest_shelf_id')::uuid,
+            produced_line.shelf_id,
             'IN',
             (header_data->>'date')::date,
             'Üretimden Giriş',
@@ -643,7 +643,7 @@ BEGIN
         PERFORM public.process_stock_movement(
             produced_line.product_id, 
             (header_data->>'dest_warehouse_id')::uuid, 
-            (header_data->>'dest_shelf_id')::uuid, 
+            produced_line.shelf_id, 
             produced_line.quantity, 
             'IN'
         );
@@ -663,7 +663,7 @@ BEGIN
 
     -- Yeni hareketleri ekle (var olan fiş numarası ile)
     -- Tüketilen
-    FOR consumed_line IN SELECT * FROM jsonb_to_recordset(consumed_lines) as x(product_id uuid, quantity numeric)
+    FOR consumed_line IN SELECT * FROM jsonb_to_recordset(consumed_lines) as x(product_id uuid, quantity numeric, shelf_id uuid)
     LOOP
         INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes, transaction_type)
         VALUES (
@@ -671,7 +671,7 @@ BEGIN
             consumed_line.product_id, 
             consumed_line.quantity, 
             (header_data->>'source_warehouse_id')::uuid, 
-            (header_data->>'source_shelf_id')::uuid, 
+            consumed_line.shelf_id, 
             'OUT', 
             (header_data->>'date')::date, 
             'Üretim Sarf', 
@@ -681,14 +681,14 @@ BEGIN
         PERFORM public.process_stock_movement(
             consumed_line.product_id, 
             (header_data->>'source_warehouse_id')::uuid, 
-            (header_data->>'source_shelf_id')::uuid, 
+            consumed_line.shelf_id, 
             consumed_line.quantity, 
             'OUT'
         );
     END LOOP;
 
     -- Üretilen
-    FOR produced_line IN SELECT * FROM jsonb_to_recordset(produced_lines) as x(product_id uuid, quantity numeric)
+    FOR produced_line IN SELECT * FROM jsonb_to_recordset(produced_lines) as x(product_id uuid, quantity numeric, shelf_id uuid)
     LOOP
         INSERT INTO public.stock_movements (voucher_number, product_id, quantity, warehouse_id, shelf_id, type, date, source_or_destination, notes, transaction_type)
         VALUES (
@@ -696,7 +696,7 @@ BEGIN
             produced_line.product_id, 
             produced_line.quantity, 
             (header_data->>'dest_warehouse_id')::uuid, 
-            (header_data->>'dest_shelf_id')::uuid, 
+            produced_line.shelf_id, 
             'IN', 
             (header_data->>'date')::date, 
             'Üretimden Giriş', 
@@ -706,7 +706,7 @@ BEGIN
         PERFORM public.process_stock_movement(
             produced_line.product_id, 
             (header_data->>'dest_warehouse_id')::uuid, 
-            (header_data->>'dest_shelf_id')::uuid, 
+            produced_line.shelf_id, 
             produced_line.quantity, 
             'IN'
         );

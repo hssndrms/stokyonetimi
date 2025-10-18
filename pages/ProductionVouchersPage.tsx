@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { StockMovement, Product, Warehouse, Shelf, Unit, ModalState, GeneralSettings } from '../types';
-import { findById } from '../../utils/helpers';
+import { findById } from '../utils/helpers';
 import { PlusIcon } from '../components/icons';
 
 const ProductionVouchersPage: React.FC<{
@@ -54,7 +54,6 @@ const ProductionVouchersPage: React.FC<{
     }, [movements, products, warehouses, shelves, units]);
 
     const sortedData = useMemo(() => {
-        // FIX: Add type checks to prevent comparing arrays which causes a TypeScript error.
         return [...productionMovements].sort((a, b) => {
             const aValue = a[sortConfig.key as keyof typeof a];
             const bValue = b[sortConfig.key as keyof typeof a];

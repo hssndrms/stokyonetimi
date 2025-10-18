@@ -108,13 +108,21 @@ const Modal: React.FC<ModalProps> = ({ state, onClose, setModal, ...props }) => 
     const modalWidthClass = () => {
         if ([ 'STOCK_IN', 'STOCK_OUT', 'EDIT_STOCK_VOUCHER', 
               'STOCK_TRANSFER', 'EDIT_STOCK_TRANSFER', 
-              'ADD_PRODUCTION_VOUCHER', 'EDIT_PRODUCTION_VOUCHER' ].includes(type)) return 'max-w-6xl';
+              'ADD_PRODUCTION_VOUCHER', 'EDIT_PRODUCTION_VOUCHER' ].includes(type)) return 'max-w-7xl';
         if (type === 'CONFIRM_DELETE') return 'max-w-md';
         return 'max-w-lg';
     }
 
+    const topAlignedModals = new Set([
+        'STOCK_IN', 'STOCK_OUT', 'EDIT_STOCK_VOUCHER', 
+        'STOCK_TRANSFER', 'EDIT_STOCK_TRANSFER', 
+        'ADD_PRODUCTION_VOUCHER', 'EDIT_PRODUCTION_VOUCHER'
+    ]);
+
+    const verticalAlignmentClass = topAlignedModals.has(type!) ? 'items-start pt-8' : 'items-center';
+
     return (
-        <div id="modal-overlay" className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div id="modal-overlay" className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex ${verticalAlignmentClass} justify-center p-4 overflow-y-auto`}>
             <div ref={modalRef} id="modal-panel" className={`bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full ${modalWidthClass()} p-6 relative`}>
                 <div id="modal-header" className="flex justify-between items-start pb-4 border-b dark:border-slate-700 mb-6">
                     <h2 className="modal-title text-2xl font-bold text-slate-800 dark:text-slate-100">{renderTitle()}</h2>

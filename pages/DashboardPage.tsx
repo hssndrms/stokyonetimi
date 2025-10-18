@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import { Product, StockMovement, ModalState, StockItem, ProductGroup } from '../types';
 import { findById, formatNumber } from '../utils/helpers';
@@ -68,11 +67,11 @@ const DashboardPage: React.FC<{
     };
 
     const headers = [
-        { key: 'date', label: 'Tarih' },
-        { key: 'voucher_number', label: 'Fiş No' },
-        { key: 'productName', label: 'Ürün' },
-        { key: 'type', label: 'İşlem' },
-        { key: 'quantity', label: 'Miktar' },
+        { key: 'date', label: 'Tarih', align: 'left' },
+        { key: 'voucher_number', label: 'Fiş No', align: 'left' },
+        { key: 'productName', label: 'Ürün', align: 'left' },
+        { key: 'type', label: 'İşlem', align: 'center' },
+        { key: 'quantity', label: 'Miktar', align: 'right' },
     ];
 
 
@@ -124,7 +123,9 @@ const DashboardPage: React.FC<{
                             <tr className="table-header-row border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
                                 {headers.map(header => (
                                     <th key={header.key} className="table-header-cell p-4 text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                                        <button onClick={() => requestSort(header.key)} className="sort-button w-full text-left flex items-center gap-1 hover:text-slate-800 dark:hover:text-slate-100">
+                                        <button onClick={() => requestSort(header.key)} 
+                                        className={`sort-button w-full flex items-center gap-1 hover:text-slate-800 dark:hover:text-slate-100 ${header.align === 'right' ? 'justify-end' : header.align === 'center' ? 'justify-center' : 'justify-start'}`}
+                                        >
                                             {header.label}
                                             {sortConfig.key === header.key ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : null}
                                         </button>
@@ -136,14 +137,14 @@ const DashboardPage: React.FC<{
                             {sortedRecentMovements.map(m => (
                                 <tr key={m.id} className="table-row border-b dark:border-slate-700">
                                     <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-300">{new Date(m.date).toLocaleDateString()}</td>
-                                    <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-300 font-mono">{m.voucher_number}</td>
+                                    <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-300">{m.voucher_number}</td>
                                     <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-300">{m.productName}</td>
-                                    <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-300">
+                                    <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-300 text-center">
                                         <span className={`status-badge px-2.5 py-1 text-xs font-semibold rounded-full ${m.type === 'IN' ? 'bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-800/30 dark:text-red-200'}`}>
                                             {m.type === 'IN' ? 'GİRİŞ' : 'ÇIKIŞ'}
                                         </span>
                                     </td>
-                                    <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-200 font-medium">{formatNumber(m.quantity)}</td>
+                                    <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-200 font-medium text-right">{formatNumber(m.quantity)}</td>
                                 </tr>
                             ))}
                         </tbody>

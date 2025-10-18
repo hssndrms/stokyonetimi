@@ -194,7 +194,7 @@ const StockOverviewPage: React.FC<{
                                             {shelflessProducts.map(({ product, quantity }) => (
                                                 <tr key={`sl-${product.id}`} className="product-row table-row border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
                                                     <td className="table-cell p-4 pl-12 text-slate-700 dark:text-slate-300">{product.name}</td>
-                                                    <td className="table-cell p-4 text-slate-600 dark:text-slate-400 font-mono text-sm">{product.sku}</td>
+                                                    <td className="table-cell p-4 text-slate-600 dark:text-slate-400 text-sm">{product.sku}</td>
                                                     <td className="table-cell p-4 text-slate-800 dark:text-slate-200 font-medium text-right">{formatNumber(quantity)} {getUnitAbbr(product.unit_id)}</td>
                                                 </tr>
                                             ))}
@@ -211,7 +211,7 @@ const StockOverviewPage: React.FC<{
                                                     {expanded[`sh-${shelf.id}`] && shelfProducts.map(({ product, quantity }) => (
                                                         <tr key={product.id} className="product-row table-row border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
                                                             <td className="table-cell p-4 pl-20 text-slate-700 dark:text-slate-300">{product.name}</td>
-                                                            <td className="table-cell p-4 text-slate-600 dark:text-slate-400 font-mono text-sm">{product.sku}</td>
+                                                            <td className="table-cell p-4 text-slate-600 dark:text-slate-400 text-sm">{product.sku}</td>
                                                             <td className="table-cell p-4 text-slate-800 dark:text-slate-200 font-medium text-right">{formatNumber(quantity)} {getUnitAbbr(product.unit_id)}</td>
                                                         </tr>
                                                     ))}
