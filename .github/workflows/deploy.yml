@@ -2,8 +2,10 @@ name: Deploy to Windows IIS Server
 
 on:
   push:
-    branches:
-      - release # Sadece 'release' dalına push yapıldığında çalışır
+    tags:
+     - 'v*.*.*' # v1.2.3 gibi etiketlerde çalışır
+    #branches:
+     # - release # Sadece 'release' dalına push yapıldığında çalışır
 
 jobs:
   build-and-deploy:
