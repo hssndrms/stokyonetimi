@@ -7,10 +7,10 @@
     "withGlobalTauri": true
   },
   "tauri": {
-    "package": {
-      "productName": "Stok Takip Uygulaması",
-      "version": "1.4.23"
-    },
+   // "package": {
+   //   "productName": "Stok Takip Uygulaması",
+   //   "version": "1.4.23"
+   // },
     "allowlist": {
       "all": false,
       "shell": {
