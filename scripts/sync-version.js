@@ -1,5 +1,5 @@
-import { readFileSync, writeFileSync } from 'fs';
-import { resolve } from 'path';
+const { readFileSync, writeFileSync } = require('fs');
+const { resolve } = require('path');
 
 // Get new version from package.json
 const packageJsonPath = resolve(process.cwd(), 'package.json');
