@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Page, MenuItem } from '../types';
-import { APP_VERSION } from '../data/version';
+import { VERSION } from '../data/version';
 import { 
     DashboardIcon, BoxIcon, WarehouseIcon, ArrowRightLeftIcon, DocumentChartBarIcon, 
     CubeIcon, UserGroupIcon, TruckIcon, RulerCombinedIcon, TagsIcon, LayerGroupIcon,
@@ -206,7 +206,7 @@ const Sidebar: React.FC<{ currentPage: Page; setPage: (page: Page) => void; isOp
                     </ul>
                 </nav>
                 <div id="app-version-footer" className="p-4 text-center text-xs text-slate-500 border-t border-slate-700">
-                    Versiyon: {APP_VERSION}
+                    Versiyon: {VERSION}
                 </div>
             </div>
         </aside>
