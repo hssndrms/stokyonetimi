@@ -37,9 +37,6 @@
         "scope": [
           "https://*.supabase.co/*"
         ]
-        "scope": [
-          "https://*.supabase.co/*"
-        ]
       }
     },
     "bundle": {
