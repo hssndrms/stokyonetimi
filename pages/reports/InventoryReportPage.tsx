@@ -40,7 +40,6 @@ const InventoryReportPage: React.FC<{
 
     const [filters, setFilters] = useState(initialFilters);
     const [displayedData, setDisplayedData] = useState<any[]>([]);
-    const [availableProducts, setAvailableProducts] = useState<Product[]>(products);
     const [availableWarehouses, setAvailableWarehouses] = useState<Warehouse[]>(warehouses);
     const [availableShelves, setAvailableShelves] = useState<Shelf[]>([]);
     const [exportFormat, setExportFormat] = useState<'excel' | 'csv'>('excel');
@@ -49,17 +48,22 @@ const InventoryReportPage: React.FC<{
 
     const getUnitAbbr = (productId: string) => findById(units, findById(products, productId)?.unit_id)?.abbreviation || '';
     
+    const availableProducts = useMemo(() => {
+        const productList = filters.productGroupId
+            ? products.filter(p => p.group_id === filters.productGroupId)
+            : products;
+        return productList.map(p => ({ id: p.id, name: `${p.name} (${p.sku})` }));
+    }, [filters.productGroupId, products]);
+
     useEffect(() => {
         if (filters.productGroupId) {
-            setAvailableProducts(products.filter(p => p.group_id === filters.productGroupId));
             const currentProduct = findById(products, filters.productId);
             if (currentProduct && currentProduct.group_id !== filters.productGroupId) {
                 setFilters(f => ({ ...f, productId: '' }));
             }
-        } else {
-            setAvailableProducts(products);
         }
     }, [filters.productGroupId, products, filters.productId]);
+
 
     useEffect(() => {
         if (filters.warehouseGroupId) {

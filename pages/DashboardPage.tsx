@@ -12,13 +12,18 @@ const DashboardPage: React.FC<{
 }> = ({ products, stockItems, movements, productGroups, setModal }) => {
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' }>({ key: 'date', direction: 'descending' });
 
-    const getProductName = (productId: string) => findById(products, productId)?.name || 'Bilinmeyen Ürün';
-
     const sortedRecentMovements = useMemo(() => {
         let items = [...movements]
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
             .slice(0, 20)
-            .map(m => ({ ...m, productName: getProductName(m.product_id) })); 
+            .map(m => {
+                const product = findById(products, m.product_id);
+                return { 
+                    ...m, 
+                    productName: product?.name || 'Bilinmeyen Ürün',
+                    productSku: product?.sku || '???'
+                };
+            }); 
 
         if (sortConfig.key) {
             items.sort((a, b) => {
@@ -65,11 +70,36 @@ const DashboardPage: React.FC<{
         }
         setSortConfig({ key, direction });
     };
+    
+    const handleVoucherClick = (voucherNumber: string) => {
+        const movement = movements.find(m => m.voucher_number === voucherNumber);
+        if (!movement) return;
+
+        let modalType: ModalState['type'] = null;
+        switch (movement.transaction_type) {
+            case 'TRANSFER':
+                modalType = 'EDIT_STOCK_TRANSFER';
+                break;
+            case 'PRODUCTION':
+                modalType = 'EDIT_PRODUCTION_VOUCHER';
+                break;
+            case 'STANDARD':
+            default:
+                modalType = 'EDIT_STOCK_VOUCHER';
+                break;
+        }
+
+        setModal({
+            type: modalType,
+            data: { voucher_number: voucherNumber }
+        });
+    };
 
     const headers = [
         { key: 'date', label: 'Tarih', align: 'left' },
         { key: 'voucher_number', label: 'Fiş No', align: 'left' },
-        { key: 'productName', label: 'Ürün', align: 'left' },
+        { key: 'productSku', label: 'Ürün Kodu', align: 'left' },
+        { key: 'productName', label: 'Ürün Adı', align: 'left' },
         { key: 'type', label: 'İşlem', align: 'center' },
         { key: 'quantity', label: 'Miktar', align: 'right' },
     ];
@@ -137,14 +167,22 @@ const DashboardPage: React.FC<{
                             {sortedRecentMovements.map(m => (
                                 <tr key={m.id} className="table-row border-b dark:border-slate-700">
                                     <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-300">{new Date(m.date).toLocaleDateString()}</td>
-                                    <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-300">{m.voucher_number}</td>
+                                    <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-300">
+                                        <button 
+                                            onClick={() => handleVoucherClick(m.voucher_number)}
+                                            className="voucher-link text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline"
+                                        >
+                                            {m.voucher_number}
+                                        </button>
+                                    </td>
+                                    <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-300">{m.productSku}</td>
                                     <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-300">{m.productName}</td>
                                     <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-300 text-center">
                                         <span className={`status-badge px-2.5 py-1 text-xs font-semibold rounded-full ${m.type === 'IN' ? 'bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-800/30 dark:text-red-200'}`}>
                                             {m.type === 'IN' ? 'GİRİŞ' : 'ÇIKIŞ'}
                                         </span>
                                     </td>
-                                    <td className="table-cell p-4 align-middle text-slate-700 dark:text-slate-200 font-medium text-right">{formatNumber(m.quantity)}</td>
+                                    <td className="table-cell p-4 align-middle text-slate-800 dark:text-slate-200 font-medium text-right">{formatNumber(m.quantity)}</td>
                                 </tr>
                             ))}
                         </tbody>
