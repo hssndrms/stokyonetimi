@@ -6,11 +6,11 @@
     "distDir": "../dist",
     "withGlobalTauri": true
   },
-  "package": {
-    "productName": "Stok Takip Uygulaması",
-    "version": "1.4.5"
-  },
   "tauri": {
+    "package": {
+      "productName": "Stok Takip Uygulaması",
+      "version": "1.4.4"
+    },
     "allowlist": {
       "all": false,
       "shell": {
@@ -24,14 +24,18 @@
       "fs": {
         "all": false,
         "writeFile": true,
-        "scope": ["$DOWNLOAD/*"]
+        "scope": [
+          "$DOWNLOAD/*"
+        ]
       },
       "notification": {
         "all": true
       },
-       "http": {
+      "http": {
         "all": true,
-        "scope": ["https://*.supabase.co/*"]
+        "scope": [
+          "https://*.supabase.co/*"
+        ]
       }
     },
     "bundle": {
