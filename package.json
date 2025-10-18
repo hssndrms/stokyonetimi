@@ -1,7 +1,7 @@
 {
   "name": "stok-takip-uygulaması-supabase",
   "private": true,
-  "version": "1.3.5",
+  "version": "1.4.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
