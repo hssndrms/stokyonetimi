@@ -1,5 +1,5 @@
 export const SETUP_SQL = `
--- Stok Takip Uygulaması Kurulum Betiği v1.4.0
+-- Stok Takip Uygulaması Kurulum Betiği v1.4.2
 -- Bu betik, uygulamanın ihtiyaç duyduğu tüm tabloları, fonksiyonları ve güvenlik kurallarını oluşturur.
 -- Supabase projenizdeki SQL Editor'e yapıştırıp çalıştırın.
 
@@ -240,7 +240,7 @@ BEGIN
     SELECT COALESCE(MAX(CAST(SUBSTRING(voucher_number FROM (LENGTH(prefix) + 1)) AS INTEGER)), 0)
     INTO last_number
     FROM public.stock_movements
-    WHERE voucher_number LIKE prefix || '%';
+    WHERE voucher_number LIKE prefix || '%' AND LENGTH(voucher_number) = (LENGTH(prefix) + len);
 
     new_number_str := LPAD(CAST(last_number + 1 AS TEXT), len, '0');
 
@@ -264,7 +264,7 @@ BEGIN
     SELECT COALESCE(MAX(CAST(SUBSTRING(sku FROM (LENGTH(prefix) + 1)) AS INTEGER)), 0)
     INTO last_number
     FROM public.products
-    WHERE group_id = p_group_id AND sku LIKE prefix || '%';
+    WHERE group_id = p_group_id AND sku LIKE prefix || '%' AND LENGTH(sku) = (LENGTH(prefix) + len);
 
     new_number_str := LPAD(CAST(last_number + 1 AS TEXT), len, '0');
 
@@ -296,7 +296,7 @@ BEGIN
     SELECT COALESCE(MAX(CAST(SUBSTRING(code FROM (LENGTH(prefix) + 1)) AS INTEGER)), 0)
     INTO last_number
     FROM public.accounts
-    WHERE type = p_type AND code LIKE prefix || '%';
+    WHERE type = p_type AND code LIKE prefix || '%' AND LENGTH(code) = (LENGTH(prefix) + len);
 
     new_number_str := LPAD(CAST(last_number + 1 AS TEXT), len, '0');
 

@@ -8,6 +8,104 @@ export interface VersionUpdate {
 // Gelecekteki veritabanı güncellemeleri bu diziye eklenecektir.
 export const VERSION_UPDATES: VersionUpdate[] = [
 {
+  version: '1.4.2',
+  date: '2025-10-15',
+  description: 'Otomatik numara üreten fonksiyonlar (`get_next_voucher_number`, `get_next_sku`, `get_next_account_code`), bir önekin başka bir önekin alt kümesi olması durumunda (örn: "T" ve "TR") ortaya çıkan çakışmaları önlemek için güncellendi. Sorgular artık kodun tam uzunluğunu da kontrol ederek "invalid input syntax" hatasını düzeltiyor.',
+  sql: `
+-- Yeni Fiş Numarası Üretme Fonksiyonu
+CREATE OR REPLACE FUNCTION public.get_next_voucher_number(p_type text)
+RETURNS text LANGUAGE plpgsql AS $$
+DECLARE
+    prefix TEXT;
+    len INT;
+    last_number INT;
+    new_number_str TEXT;
+BEGIN
+    SELECT 
+        CASE 
+            WHEN p_type = 'IN' THEN stock_in_prefix
+            WHEN p_type = 'OUT' THEN stock_out_prefix
+            WHEN p_type = 'TRANSFER' THEN stock_transfer_prefix
+            WHEN p_type = 'PRODUCTION' THEN production_prefix
+        END,
+        CASE 
+            WHEN p_type = 'IN' THEN stock_in_length
+            WHEN p_type = 'OUT' THEN stock_out_length
+            WHEN p_type = 'TRANSFER' THEN stock_transfer_length
+            WHEN p_type = 'PRODUCTION' THEN production_length
+        END
+    INTO prefix, len
+    FROM public.general_settings WHERE id = 1;
+
+    SELECT COALESCE(MAX(CAST(SUBSTRING(voucher_number FROM (LENGTH(prefix) + 1)) AS INTEGER)), 0)
+    INTO last_number
+    FROM public.stock_movements
+    WHERE voucher_number LIKE prefix || '%' AND LENGTH(voucher_number) = (LENGTH(prefix) + len);
+
+    new_number_str := LPAD(CAST(last_number + 1 AS TEXT), len, '0');
+
+    RETURN prefix || new_number_str;
+END;
+$$;
+
+-- Yeni SKU Üretme Fonksiyonu
+CREATE OR REPLACE FUNCTION public.get_next_sku(p_group_id uuid)
+RETURNS text LANGUAGE plpgsql AS $$
+DECLARE
+    prefix TEXT;
+    len INT;
+    last_number INT;
+    new_number_str TEXT;
+BEGIN
+    SELECT sku_prefix, sku_length
+    INTO prefix, len
+    FROM public.product_groups WHERE id = p_group_id;
+
+    SELECT COALESCE(MAX(CAST(SUBSTRING(sku FROM (LENGTH(prefix) + 1)) AS INTEGER)), 0)
+    INTO last_number
+    FROM public.products
+    WHERE group_id = p_group_id AND sku LIKE prefix || '%' AND LENGTH(sku) = (LENGTH(prefix) + len);
+
+    new_number_str := LPAD(CAST(last_number + 1 AS TEXT), len, '0');
+
+    RETURN prefix || new_number_str;
+END;
+$$;
+
+-- Yeni Cari Kodu Üretme Fonksiyonu
+CREATE OR REPLACE FUNCTION public.get_next_account_code(p_type text)
+RETURNS text LANGUAGE plpgsql AS $$
+DECLARE
+    prefix TEXT;
+    len INT;
+    last_number INT;
+    new_number_str TEXT;
+BEGIN
+    SELECT 
+        CASE 
+            WHEN p_type = 'customer' THEN customer_code_prefix
+            WHEN p_type = 'supplier' THEN supplier_code_prefix
+        END,
+        CASE 
+            WHEN p_type = 'customer' THEN customer_code_length
+            WHEN p_type = 'supplier' THEN supplier_code_length
+        END
+    INTO prefix, len
+    FROM public.general_settings WHERE id = 1;
+
+    SELECT COALESCE(MAX(CAST(SUBSTRING(code FROM (LENGTH(prefix) + 1)) AS INTEGER)), 0)
+    INTO last_number
+    FROM public.accounts
+    WHERE type = p_type AND code LIKE prefix || '%' AND LENGTH(code) = (LENGTH(prefix) + len);
+
+    new_number_str := LPAD(CAST(last_number + 1 AS TEXT), len, '0');
+
+    RETURN prefix || new_number_str;
+END;
+$$;
+`
+},
+{
   version: '1.4.0',
   date: '2025-10-14',
   description: 'Tüm stok işleme fonksiyonları (stock_in, stock_out, stock_transfer, process_production_voucher ve bunların düzenleme versiyonları), raf bilgisini artık fiş başlığından değil, her bir hareket satırından alacak şekilde güncellendi. Bu, tek bir fişte birden fazla raf ile işlem yapılmasına olanak tanır.',

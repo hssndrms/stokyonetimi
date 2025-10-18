@@ -193,9 +193,9 @@ const InventoryReportPage: React.FC<{
         }));
 
         if (exportFormat === 'excel') {
-            exportToExcel(filename, dataToExport);
+            exportToExcel(filename, dataToExport, addToast);
         } else {
-            exportToCsv(filename, dataToExport);
+            exportToCsv(filename, dataToExport, addToast);
         }
     }
 
