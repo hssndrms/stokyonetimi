@@ -59,7 +59,7 @@ jobs:
         with:
           projectPath: "."
           includeRelease: true
-          includeUpdaterJson: true"
+          includeUpdaterJson: true
           tagName: ${{ github.ref_name }} # v1.2.3
           releaseName: "Stok Takip Uygulaması ${{ github.ref_name }}"
           releaseBody: "Bu sürüm için kurulum dosyalarını aşağıdaki Assets bölümünden indirebilirsiniz."
