@@ -1,5 +1,5 @@
-import { readFileSync, writeFileSync } from 'fs';
-import { resolve } from 'path';
+const { readFileSync, writeFileSync } = require('fs');
+const { resolve } = require('path');
 
 // Get new version from package.json
 const packageJsonPath = resolve(process.cwd(), 'package.json');
@@ -7,7 +7,7 @@ const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
 const newVersion = packageJson.version;
 
 if (!newVersion) {
-  console.error('Could not find version in    package.json');
+  console.error('Could not find version in package.json');
   process.exit(1);
 }
 
