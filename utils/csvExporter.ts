@@ -1,5 +1,8 @@
+import { save } from '@tauri-apps/api/dialog';
+import { writeTextFile } from '@tauri-apps/api/fs';
+import { useToast } from '../context/ToastContext';
 
-export const exportToCsv = (filename: string, rows: Record<string, any>[]) => {
+export const exportToCsv = async (filename: string, rows: Record<string, any>[], addToast: (message: string, type: 'success' | 'error' | 'info') => void) => {
   if (!rows || rows.length === 0) {
     return;
   }
@@ -23,15 +26,36 @@ export const exportToCsv = (filename: string, rows: Record<string, any>[]) => {
       }).join(separator);
     }).join('\n');
 
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  if (link.download !== undefined) {
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${filename}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  // @ts-ignore - __TAURI__ global değişkeni Tauri tarafından enjekte edilir.
+  if (window.__TAURI__) {
+    try {
+      const filePath = await save({
+        defaultPath: `${filename}.csv`,
+        filters: [{
+          name: 'CSV File',
+          extensions: ['csv']
+        }]
+      });
+
+      if (filePath) {
+        await writeTextFile(filePath, csvContent);
+        addToast('Dosya başarıyla kaydedildi.', 'success');
+      }
+    } catch (err) {
+      console.error(err);
+      addToast('Dosya kaydedilirken bir hata oluştu.', 'error');
+    }
+  } else {
+    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${filename}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   }
 };

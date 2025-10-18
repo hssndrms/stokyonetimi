@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Shelf, AccountType, StockItem, Unit, ModalState, Product } from '../../types';
+import { Shelf, AccountType, StockItem, Unit, ModalState, Product, ProductGroup } from '../../types';
 import { useToast } from '../../context/ToastContext';
 import { PlusIcon, TrashIcon, SaveIcon, CancelIcon } from '../icons';
 import SearchableSelect from '../SearchableSelect';
@@ -19,6 +19,94 @@ interface StockMovementFormModalProps extends ModalComponentProps<{
     isEdit?: boolean;
     setModal: (modal: ModalState) => void;
 }
+
+type FormErrors = {
+    header?: { date?: boolean, warehouseId?: boolean, accountId?: boolean },
+    lines?: { [id: number]: { productGroupId?: boolean, productId?: boolean, quantity?: boolean, shelfId?: boolean } }
+};
+
+interface LineRowProps {
+    line: Line;
+    onLineChange: (id: number, field: keyof Omit<Line, 'id'>, value: string) => void;
+    onRemove: (id: number) => void;
+    isRemovalDisabled: boolean;
+    productGroups: ProductGroup[];
+    productOptionsWithSku: { id: string, name: string | undefined }[];
+    products: Product[];
+    shelves: Shelf[];
+    stockItems: StockItem[];
+    units: Unit[];
+    errors: FormErrors;
+    availableShelves: Shelf[];
+    getProductSku: (productId: string) => string;
+    getUnitAbbrForProduct: (productId: string) => string;
+    getStockInfo: (productId: string, warehouseId: string, shelfId: string) => string;
+    voucherType: 'IN' | 'OUT';
+    warehouseId: string;
+    isEditMode: boolean;
+}
+
+const LineRow: React.FC<LineRowProps> = React.memo(({
+    line, onLineChange, onRemove, isRemovalDisabled, productGroups, productOptionsWithSku,
+    products, shelves, stockItems, units, errors, availableShelves, getProductSku,
+    getUnitAbbrForProduct, getStockInfo, voucherType, warehouseId, isEditMode
+}) => {
+    const sku = getProductSku(line.productId);
+    
+    const availableProductsForLine = useMemo(() => {
+        if (!line.productGroupId) return [];
+        const productIdsInGroup = new Set(products.filter(p => p.group_id === line.productGroupId).map(p => p.id));
+        return productOptionsWithSku.filter(p => productIdsInGroup.has(p.id));
+    }, [line.productGroupId, productOptionsWithSku, products]);
+    
+    const shelvesForLine = (() => {
+        if (voucherType === 'IN') return availableShelves;
+        
+        if (!line.productId || !warehouseId) return [];
+        const shelfIdsWithStock = stockItems
+            .filter(si => si.product_id === line.productId && si.warehouse_id === warehouseId && si.quantity > 0 && si.shelf_id)
+            .map(si => si.shelf_id);
+        
+        const shelvesWithStock = shelves.filter(shelf => shelf.warehouse_id === warehouseId && shelfIdsWithStock.includes(shelf.id));
+
+        if (isEditMode && line.shelfId && !shelvesWithStock.some(s => s.id === line.shelfId)) {
+            const savedShelf = findById(shelves, line.shelfId);
+            if (savedShelf && savedShelf.warehouse_id === warehouseId) {
+                return Array.from(new Set([...shelvesWithStock, savedShelf]));
+            }
+        }
+        
+        return shelvesWithStock;
+    })();
+
+    return (
+        <tr className="table-row border-t dark:border-slate-700">
+            <td className="table-cell p-2 align-middle"><SearchableSelect options={productGroups} value={line.productGroupId} onChange={val => onLineChange(line.id, 'productGroupId', val)} placeholder="Grup Seçin" error={!!errors.lines?.[line.id]?.productGroupId} /></td>
+            <td className="p-2 align-middle font-mono text-slate-600 dark:text-slate-400">{sku}</td>
+            <td className="table-cell p-2 align-middle"><SearchableSelect options={availableProductsForLine} value={line.productId} onChange={val => onLineChange(line.id, 'productId', val)} placeholder="Ürün Seçin" disabled={!line.productGroupId} error={!!errors.lines?.[line.id]?.productId} /></td>
+            <td className="table-cell p-2 align-middle">
+                <SearchableSelect
+                    options={shelvesForLine}
+                    value={line.shelfId}
+                    onChange={val => onLineChange(line.id, 'shelfId', val)}
+                    placeholder={availableShelves.length > 0 ? "Raf Seçin" : "Raf Bulunmuyor"}
+                    disabled={availableShelves.length === 0}
+                    error={!!errors.lines?.[line.id]?.shelfId}
+                />
+            </td>
+            <td className="table-cell p-2 align-middle text-slate-600 dark:text-slate-400 font-medium">{getStockInfo(line.productId, warehouseId, line.shelfId)}</td>
+            <td className="table-cell p-2 align-middle">
+                 <div className="flex items-center">
+                    <input type="number" step="any" min="0.0001" value={line.quantity} onChange={e => onLineChange(line.id, 'quantity', e.target.value)} className={`${formInputSmallClass} ${errors.lines?.[line.id]?.quantity ? 'border-red-500' : ''} w-full text-right`} />
+                    <span className="text-sm text-slate-500 dark:text-slate-400 font-medium pl-2 w-12 text-left">{getUnitAbbrForProduct(line.productId)}</span>
+                </div>
+            </td>
+            <td className="table-cell p-2 text-center align-middle">
+                <button type="button" onClick={() => onRemove(line.id)} className="remove-line-button text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400 disabled:text-slate-300 dark:disabled:text-slate-600" disabled={isRemovalDisabled}><TrashIcon /></button>
+            </td>
+        </tr>
+    );
+});
 
 
 const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStockIn, isEdit, data, onClose, getNextVoucherNumber, shelves, accounts, products, warehouses, productGroups, handleStockIn, handleStockOut, handleEditStockVoucher, stockItems, units, stockMovements, setModal, handleDeleteStockVoucher }) => {
@@ -70,12 +158,7 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
         return [{ id: Date.now(), productGroupId: '', productId: '', quantity: '1', shelfId: '' }];
     });
     
-    type FormErrors = {
-        header?: { date?: boolean, warehouseId?: boolean, accountId?: boolean },
-        lines?: { [id: number]: { productGroupId?: boolean, productId?: boolean, quantity?: boolean, shelfId?: boolean } }
-    };
     const [errors, setErrors] = useState<FormErrors>({});
-
     const [voucherNumber, setVoucherNumber] = useState('');
     const [availableShelves, setAvailableShelves] = useState<Shelf[]>([]);
     
@@ -145,7 +228,6 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
         setHeader(h => ({ ...h, [field]: value }));
 
         if (field === 'warehouseId') {
-            // Reset shelfId on lines if warehouse changes
             setLines(ls => ls.map(l => ({...l, shelfId: ''})));
         }
 
@@ -160,10 +242,10 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
                 const updatedLine = { ...l, [field]: value };
                 if (field === 'productGroupId') {
                     updatedLine.productId = '';
-                    updatedLine.shelfId = ''; // Reset shelf when group changes
+                    updatedLine.shelfId = '';
                 }
                 if (field === 'productId') {
-                    updatedLine.shelfId = ''; // Reset shelf when product changes
+                    updatedLine.shelfId = '';
                 }
                 return updatedLine;
             }
@@ -344,6 +426,25 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
         });
     };
 
+    const lineRowProps = {
+        onLineChange: handleLineChange,
+        onRemove: removeLine,
+        productGroups,
+        productOptionsWithSku,
+        products,
+        shelves,
+        stockItems,
+        units,
+        errors,
+        availableShelves,
+        getProductSku,
+        getUnitAbbrForProduct,
+        getStockInfo,
+        voucherType,
+        warehouseId: header.warehouseId,
+        isEditMode
+    };
+
     return (
         <form id="stock-movement-form" onSubmit={handleSubmit} className="space-y-4">
             <fieldset id="voucher-header-info" className="form-fieldset border dark:border-slate-600 p-4 rounded-md">
@@ -411,64 +512,14 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
                             </tr>
                         </thead>
                         <tbody className="table-body">
-                            {lines.map((line) => {
-                                const sku = getProductSku(line.productId);
-                                const availableProductsForLine = useMemo(() => {
-                                    if (!line.productGroupId) return [];
-                                    const productIdsInGroup = new Set(products.filter(p => p.group_id === line.productGroupId).map(p => p.id));
-                                    return productOptionsWithSku.filter(p => productIdsInGroup.has(p.id));
-                                }, [line.productGroupId, productOptionsWithSku, products]);
-                                
-                                const shelvesForLine = (() => {
-                                    if (voucherType === 'IN') return availableShelves;
-                                    
-                                    // Stok çıkışı için, ürünü içeren rafları filtrele
-                                    if (!line.productId || !header.warehouseId) return [];
-                                    const shelfIdsWithStock = stockItems
-                                        .filter(si => si.product_id === line.productId && si.warehouse_id === header.warehouseId && si.quantity > 0 && si.shelf_id)
-                                        .map(si => si.shelf_id);
-                                    
-                                    const shelvesWithStock = shelves.filter(shelf => shelf.warehouse_id === header.warehouseId && shelfIdsWithStock.includes(shelf.id));
-                                
-                                    // Düzenleme modunda, stoğu bitmiş olsa bile önceden seçili rafı listeye ekle
-                                    if (isEditMode && line.shelfId && !shelvesWithStock.some(s => s.id === line.shelfId)) {
-                                        const savedShelf = findById(shelves, line.shelfId);
-                                        if (savedShelf && savedShelf.warehouse_id === header.warehouseId) {
-                                            return Array.from(new Set([...shelvesWithStock, savedShelf]));
-                                        }
-                                    }
-                                    
-                                    return shelvesWithStock;
-                                })();
-
-                                return (
-                                    <tr key={line.id} className="table-row border-t dark:border-slate-700">
-                                        <td className="table-cell p-2 align-middle"><SearchableSelect options={productGroups} value={line.productGroupId} onChange={val => handleLineChange(line.id, 'productGroupId', val)} placeholder="Grup Seçin" error={!!errors.lines?.[line.id]?.productGroupId} /></td>
-                                        <td className="p-2 align-middle font-mono text-slate-600 dark:text-slate-400">{sku}</td>
-                                        <td className="table-cell p-2 align-middle"><SearchableSelect options={availableProductsForLine} value={line.productId} onChange={val => handleLineChange(line.id, 'productId', val)} placeholder="Ürün Seçin" disabled={!line.productGroupId} error={!!errors.lines?.[line.id]?.productId} /></td>
-                                        <td className="table-cell p-2 align-middle">
-                                            <SearchableSelect
-                                                options={shelvesForLine}
-                                                value={line.shelfId}
-                                                onChange={val => handleLineChange(line.id, 'shelfId', val)}
-                                                placeholder={availableShelves.length > 0 ? "Raf Seçin" : "Raf Bulunmuyor"}
-                                                disabled={availableShelves.length === 0}
-                                                error={!!errors.lines?.[line.id]?.shelfId}
-                                            />
-                                        </td>
-                                        <td className="table-cell p-2 align-middle text-slate-600 dark:text-slate-400 font-medium">{getStockInfo(line.productId, header.warehouseId, line.shelfId)}</td>
-                                        <td className="table-cell p-2 align-middle">
-                                             <div className="flex items-center">
-                                                <input type="number" step="any" min="0.0001" value={line.quantity} onChange={e => handleLineChange(line.id, 'quantity', e.target.value)} className={`${formInputSmallClass} ${errors.lines?.[line.id]?.quantity ? 'border-red-500' : ''} w-full text-right`} />
-                                                <span className="text-sm text-slate-500 dark:text-slate-400 font-medium pl-2 w-12 text-left">{getUnitAbbrForProduct(line.productId)}</span>
-                                            </div>
-                                        </td>
-                                        <td className="table-cell p-2 text-center align-middle">
-                                            <button type="button" onClick={() => removeLine(line.id)} className="remove-line-button text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400 disabled:text-slate-300 dark:disabled:text-slate-600" disabled={lines.length <= 1}><TrashIcon /></button>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
+                           {lines.map((line) => (
+                                <LineRow
+                                    key={line.id}
+                                    line={line}
+                                    isRemovalDisabled={lines.length <= 1}
+                                    {...lineRowProps}
+                                />
+                            ))}
                         </tbody>
                     </table>
                 </div>

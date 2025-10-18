@@ -174,9 +174,9 @@ const CurrentStockReportPage: React.FC<{
             Miktar: formatNumber(row.Miktar)
         }));
         if (exportFormat === 'excel') {
-            exportToExcel(filename, dataToExport);
+            exportToExcel(filename, dataToExport, addToast);
         } else {
-            exportToCsv(filename, dataToExport);
+            exportToCsv(filename, dataToExport, addToast);
         }
     }
     

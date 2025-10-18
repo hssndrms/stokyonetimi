@@ -30,7 +30,7 @@ interface ProductionVoucherFormModalProps extends ModalComponentProps<{
     setModal: (modal: ModalState) => void;
 }
 
-const LineRow: React.FC<{
+interface LineRowProps {
     line: Line;
     lineType: 'consumed' | 'produced';
     onLineChange: (id: number | string, field: keyof Omit<Line, 'id'>, value: string) => void;
@@ -49,7 +49,9 @@ const LineRow: React.FC<{
     shelves: Shelf[];
     stockItems: StockItem[];
     errors: any;
-}> = React.memo(({ 
+}
+
+const LineRow: React.FC<LineRowProps> = React.memo(({ 
     line, lineType, onLineChange, onRemove, isRemovalDisabled, availableShelves, 
     productGroups, productOptionsWithSku, products, getProductSku, getUnitAbbrForProduct, 
     showStock, getStockInfo, header, isEditMode, shelves, stockItems, errors 
@@ -412,7 +414,16 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
                                 </tr>
                             </thead>
                             <tbody className="table-body">{producedLines.map(line => (
-                                <LineRow key={line.id} line={line} lineType="produced" onLineChange={(id, field, value) => handleLineChange('produced', id, field, value)} onRemove={(id) => removeLine('produced', id)} isRemovalDisabled={producedLines.length <= 1} availableShelves={availableDestShelves} {...lineRowProps} />
+                                <LineRow 
+                                    key={line.id} 
+                                    line={line} 
+                                    lineType="produced" 
+                                    onLineChange={(id, field, value) => handleLineChange('produced', id, field, value)} 
+                                    onRemove={(id) => removeLine('produced', id)} 
+                                    isRemovalDisabled={producedLines.length <= 1} 
+                                    availableShelves={availableDestShelves} 
+                                    {...lineRowProps} 
+                                />
                             ))}</tbody>
                         </table>
                     </div>
@@ -436,7 +447,16 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
                                 </tr>
                             </thead>
                             <tbody className="table-body">{consumedLines.map(line => (
-                                <LineRow key={line.id} line={line} lineType="consumed" onLineChange={(id, field, value) => handleLineChange('consumed', id, field, value)} onRemove={(id) => removeLine('consumed', id)} isRemovalDisabled={consumedLines.length <= 1} availableShelves={availableSourceShelves} {...lineRowProps} />
+                                <LineRow 
+                                    key={line.id} 
+                                    line={line} 
+                                    lineType="consumed" 
+                                    onLineChange={(id, field, value) => handleLineChange('consumed', id, field, value)} 
+                                    onRemove={(id) => removeLine('consumed', id)} 
+                                    isRemovalDisabled={consumedLines.length <= 1} 
+                                    availableShelves={availableSourceShelves} 
+                                    {...lineRowProps} 
+                                />
                             ))}</tbody>
                         </table>
                     </div>

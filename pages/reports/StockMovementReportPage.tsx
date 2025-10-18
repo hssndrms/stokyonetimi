@@ -379,9 +379,9 @@ const StockMovementReportPage: React.FC<{
 
         const filename = `Stok_Hareket_Raporu_${new Date().toISOString().slice(0,10)}`;
         if (exportFormat === 'excel') {
-            exportToExcel(filename, sortedData);
+            exportToExcel(filename, sortedData, addToast);
         } else {
-            exportToCsv(filename, sortedData);
+            exportToCsv(filename, sortedData, addToast);
         }
     }
     

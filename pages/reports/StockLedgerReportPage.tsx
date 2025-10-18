@@ -250,9 +250,9 @@ const StockLedgerReportPage: React.FC<{
             Kalan: formatNumber(rest.Kalan)
         }));
         if (exportFormat === 'excel') {
-            exportToExcel(filename, dataToExport);
+            exportToExcel(filename, dataToExport, addToast);
         } else {
-            exportToCsv(filename, dataToExport);
+            exportToCsv(filename, dataToExport, addToast);
         }
     }
     
