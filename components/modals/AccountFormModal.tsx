@@ -108,8 +108,8 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({ isEdit, data, onClo
                 <CancelIcon /> İptal
                 </button>
                 <button id="save-account-button" type="submit" className="submit-button font-semibold py-2 px-4 rounded-md inline-flex items-center gap-1 justify-center transition-colors bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-400">
-                <SaveIcon />
-                Kaydet</button>
+                <SaveIcon /> Kaydet
+                </button>
             </div>
         </form>
     );
