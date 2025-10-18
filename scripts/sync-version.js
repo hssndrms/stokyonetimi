@@ -44,15 +44,15 @@ try {
     // 3. Update data/version.ts
     const versionTsPath = resolve(process.cwd(), 'data/version.ts');
     let versionTsContent = readFileSync(versionTsPath, 'utf-8');
-    const versionTsRegex = /export const APP_VERSION = '[^']+'/;
+    const versionTsRegex = /export const VERSION = '[^']+'/;
     
     if (!versionTsRegex.test(versionTsContent)) {
-        throw new Error('Could not find APP_VERSION in version.ts');
+        throw new Error('Could not find VERSION in version.ts');
     }
     
     versionTsContent = versionTsContent.replace(
         versionTsRegex,
-        `export const APP_VERSION = '${newVersion}'`
+        `export const VERSION = '${newVersion}'`
     );
     writeFileSync(versionTsPath, versionTsContent);
     console.log('✅ Updated data/version.ts');
