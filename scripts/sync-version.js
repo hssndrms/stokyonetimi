@@ -7,7 +7,7 @@ const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
 const newVersion = packageJson.version;
 
 if (!newVersion) {
-  console.error('Could not find version in package.json');
+  console.error('Could not find version in    package.json');
   process.exit(1);
 }
 
@@ -26,7 +26,7 @@ try {
       console.error('❌ Could not find tauri.package information in tauri.conf.json');
   }
 } catch (error) {
-    console.error('❌ Error updating src-tauri/tauri.conf.json:', error);
+    console.error('❌ Error updating src-tauri/tauri.conf.json: ', error);
     process.exit(1);
 }
 

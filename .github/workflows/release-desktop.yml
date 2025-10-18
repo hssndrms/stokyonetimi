@@ -44,9 +44,18 @@ jobs:
         uses: tauri-apps/tauri-action@v0.4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }} # v1.2.3
-          releaseName: 'Stok Takip App v__VERSION__' # Sürüm notlarında 'v__VERSION__' -> 'v1.2.3' olur
-          releaseBody: 'See the assets to download this version.'
-          releaseDraft: true
-          prerelease: false
+          projectPath: "." # Ana dizini belirt
+          includeRelease: true
+          includeUpdaterJson: true
+      
+      - name: Debug environment
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Files in directory:"
+          ls -la
+          echo "Package.json content:"
+          cat package.json
