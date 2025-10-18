@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*.*.*' # v1.2.3 gibi etiketlerde çalışır
 
+permissions:
+  contents: write
+
 jobs:
   publish-tauri:
     strategy:

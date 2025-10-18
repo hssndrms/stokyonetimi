@@ -1,5 +1,5 @@
 export const SETUP_SQL = `
--- Stok Takip Uygulaması Kurulum Betiği v1.4.2
+-- Stok Takip Uygulaması Kurulum Betiği v1.4.6
 -- Bu betik, uygulamanın ihtiyaç duyduğu tüm tabloları, fonksiyonları ve güvenlik kurallarını oluşturur.
 -- Supabase projenizdeki SQL Editor'e yapıştırıp çalıştırın.
 
