@@ -17,11 +17,12 @@ try {
     const tauriConfPath = resolve(process.cwd(), 'src-tauri/tauri.conf.json');
     const tauriConf = JSON.parse(readFileSync(tauriConfPath, 'utf-8'));
     
-    if (!tauriConf.tauri?.package) {
-        throw new Error('Could not find tauri.package in tauri.conf.json');
+    // Eğer package köke taşındıysa aşağıdaki şekilde kontrol edin / güncelleyin
+    if (!tauriConf.package) {
+        throw new Error('Could not find package in tauri.conf.json');
     }
     
-    tauriConf.tauri.package.version = newVersion;
+    tauriConf.package.version = newVersion;
     writeFileSync(tauriConfPath, JSON.stringify(tauriConf, null, 2) + '\n');
     console.log('✅ Updated src-tauri/tauri.conf.json');
 

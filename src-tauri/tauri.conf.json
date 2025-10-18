@@ -1,4 +1,8 @@
 {
+  "package": {
+    "productName": "Stok Takip Uygulaması",
+    "version": "1.4.23"
+  },
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
@@ -7,10 +11,6 @@
     "withGlobalTauri": true
   },
   "tauri": {
-   // "package": {
-   //   "productName": "Stok Takip Uygulaması",
-   //   "version": "1.4.23"
-   // },
     "allowlist": {
       "all": false,
       "shell": {
