@@ -4,6 +4,7 @@ import { useToast } from '../../context/ToastContext';
 import { PlusIcon, MagicWandIcon } from '../icons';
 import { formInputClass, formLabelClass } from '../../styles/common';
 import { ModalComponentProps } from './ModalComponentProps';
+import { SaveIcon, CancelIcon } from '../../components/icons';
 
 type RestoredState = {
     name: string;
@@ -171,7 +172,12 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({ isEdit, data, onClo
                 </div>
 
             </div>
-            <div className="flex justify-end gap-3 mt-6 pt-4 border-t"><button type="button" onClick={onClose} className="font-semibold py-2 px-4 rounded-md transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300">İptal</button><button type="submit" className="font-semibold py-2 px-4 rounded-md transition-colors bg-indigo-600 text-white hover:bg-indigo-700">Kaydet</button></div>
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t"><button type="button" onClick={onClose} className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-1 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300">
+            <CancelIcon />
+            İptal</button>
+            <button type="submit" className="font-semibold py-2 px-4 rounded-md inline-flex items-center gap-1 justify-center transition-colors bg-indigo-600 text-white hover:bg-indigo-700">
+            <SaveIcon />
+            Kaydet</button></div>
         </form>
     );
 };

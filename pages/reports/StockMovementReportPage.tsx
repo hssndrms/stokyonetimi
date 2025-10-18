@@ -49,7 +49,6 @@ const StockMovementReportPage: React.FC<{
     const [filters, setFilters] = useState(initialFilters);
     const [displayedData, setDisplayedData] = useState<any[]>([]);
     const [availableShelves, setAvailableShelves] = useState<Shelf[]>([]);
-    const [availableProducts, setAvailableProducts] = useState<Product[]>(products);
     const [exportFormat, setExportFormat] = useState<'excel' | 'csv'>('excel');
     const { addToast } = useToast();
     const [sortConfig, setSortConfig] = useState<SortConfig[]>([{ key: 'Kayıt Zamanı', direction: 'descending' }]);
@@ -71,15 +70,19 @@ const StockMovementReportPage: React.FC<{
         }
     }, [filters.warehouseId, shelves, filters.shelfId]);
     
+    const availableProducts = useMemo(() => {
+        const productList = filters.productGroupId
+            ? products.filter(p => p.group_id === filters.productGroupId)
+            : products;
+        return productList.map(p => ({ id: p.id, name: `${p.name} (${p.sku})` }));
+    }, [filters.productGroupId, products]);
+
     useEffect(() => {
         if (filters.productGroupId) {
-            setAvailableProducts(products.filter(p => p.group_id === filters.productGroupId));
             const currentProduct = findById(products, filters.productId);
             if (currentProduct && currentProduct.group_id !== filters.productGroupId) {
                 setFilters(f => ({ ...f, productId: '' }));
             }
-        } else {
-            setAvailableProducts(products);
         }
     }, [filters.productGroupId, products, filters.productId]);
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Shelf, StockItem, Unit, ModalState, Product } from '../../types';
 import { useToast } from '../../context/ToastContext';
-import { PlusIcon, TrashIcon } from '../icons';
+import { PlusIcon, TrashIcon, SaveIcon, CancelIcon } from '../icons';
 import SearchableSelect from '../SearchableSelect';
 import { formLabelClass, formInputSmallClass } from '../../styles/common';
 import { ModalComponentProps } from './ModalComponentProps';
@@ -386,8 +386,12 @@ const StockTransferFormModal: React.FC<StockTransferFormModalProps> = ({ isEdit,
             <div className="modal-actions flex justify-between items-center mt-6 pt-4 border-t dark:border-slate-700">
                 <div>{isEdit && (<button id="delete-voucher-button" type="button" onClick={handleDelete} className="danger-action-button font-semibold py-2 px-4 rounded-md inline-flex items-center gap-2 justify-center transition-colors bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600"><TrashIcon /> Sil</button>)}</div>
                 <div className="flex gap-3">
-                    <button id="cancel-voucher-button" type="button" onClick={onClose} className="secondary-action-button font-semibold py-2 px-4 rounded-md transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600">İptal</button>
-                    <button id="save-voucher-button" type="submit" className="primary-action-button font-semibold py-2 px-4 rounded-md transition-colors bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-400">Kaydet</button>
+                    <button id="cancel-voucher-button" type="button" onClick={onClose} className="secondary-action-button font-semibold py-2 px-4 rounded-md inline-flex items-center gap-1 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600">
+                    <CancelIcon />
+                    İptal</button>
+                    <button id="save-voucher-button" type="submit" className="primary-action-button font-semibold py-2 px-4 rounded-md inline-flex items-center gap-1 justify-center transition-colors bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-400">
+                    <SaveIcon />
+                    Kaydet</button>
                 </div>
             </div>
         </form>

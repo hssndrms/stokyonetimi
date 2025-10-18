@@ -6,6 +6,7 @@ import { useToast } from '../../context/ToastContext';
 import { formInputClass, formLabelClass } from '../../styles/common';
 import SearchableSelect from '../SearchableSelect';
 import { ModalComponentProps } from './ModalComponentProps';
+import { SaveIcon, CancelIcon } from '../../components/icons';
 
 interface WarehouseFormModalProps extends ModalComponentProps<Warehouse | { suggestedCode: string }> {
     isEdit: boolean;
@@ -67,8 +68,12 @@ const WarehouseFormModal: React.FC<WarehouseFormModalProps> = ({ isEdit, data, o
                 </div>
             </div>
             <div className="modal-actions flex justify-end gap-3 mt-6 pt-4 border-t dark:border-slate-700">
-                <button type="button" onClick={onClose} className="cancel-button font-semibold py-2 px-4 rounded-md transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600">İptal</button>
-                <button type="submit" className="submit-button font-semibold py-2 px-4 rounded-md transition-colors bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-400">Kaydet</button>
+                <button type="button" onClick={onClose} className="cancel-button font-semibold py-2 px-4 rounded-md inline-flex items-center gap-1 justify-center transition-colors bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600">
+                <CancelIcon />
+                İptal</button>
+                <button type="submit" className="submit-button font-semibold py-2 px-4 rounded-md inline-flex items-center gap-1 justify-center transition-colors bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-400">
+                <SaveIcon />
+                Kaydet</button>
             </div>
         </form>
     );
