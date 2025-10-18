@@ -81,6 +81,11 @@ const StockTransferFormModal: React.FC<StockTransferFormModalProps> = ({ isEdit,
     const [availableDestShelves, setAvailableDestShelves] = useState<Shelf[]>([]);
     const [showStock, setShowStock] = useState(false);
     
+    const productOptionsWithSku = useMemo(() => products.map(p => ({
+        id: p.id,
+        name: `${p.name} (${p.sku})`
+    })), [products]);
+
     const getUnitAbbrForProduct = (productId: string): string => {
         const product = findById(products, productId);
         if (!product) return '';
@@ -325,6 +330,12 @@ const StockTransferFormModal: React.FC<StockTransferFormModalProps> = ({ isEdit,
                         </thead>
                         <tbody className="table-body">
                             {lines.map((line) => {
+                                const availableProductsForLine = useMemo(() => {
+                                    if (!line.productGroupId) return [];
+                                    const productIdsInGroup = new Set(products.filter(p => p.group_id === line.productGroupId).map(p => p.id));
+                                    return productOptionsWithSku.filter(p => productIdsInGroup.has(p.id));
+                                }, [line.productGroupId, productOptionsWithSku, products]);
+
                                  const sourceShelvesForLine = (() => {
                                     if (!line.productId || !header.sourceWarehouseId) return [];
                                     const shelfIdsWithStock = stockItems
@@ -345,8 +356,8 @@ const StockTransferFormModal: React.FC<StockTransferFormModalProps> = ({ isEdit,
                                 return (
                                 <tr key={line.id} className="table-row border-t dark:border-slate-700">
                                     <td className="p-2"><SearchableSelect options={productGroups} value={line.productGroupId} onChange={val => handleLineChange(line.id, 'productGroupId', val)} placeholder="Grup Seçin" error={!!errors.lines?.[line.id]?.productGroupId} /></td>
-                                    <td className="p-2"><input type="text" value={getProductSku(line.productId)} className={`${formInputSmallClass} bg-slate-100 dark:bg-slate-700 font-mono`} readOnly /></td>
-                                    <td className="p-2"><SearchableSelect options={line.productGroupId ? products.filter(p => p.group_id === line.productGroupId) : []} value={line.productId} onChange={val => handleLineChange(line.id, 'productId', val)} placeholder="Ürün Seçin" disabled={!line.productGroupId} error={!!errors.lines?.[line.id]?.productId} /></td>
+                                    <td className="p-2 align-middle font-mono text-slate-600 dark:text-slate-400">{getProductSku(line.productId)}</td>
+                                    <td className="p-2"><SearchableSelect options={availableProductsForLine} value={line.productId} onChange={val => handleLineChange(line.id, 'productId', val)} placeholder="Ürün Seçin" disabled={!line.productGroupId} error={!!errors.lines?.[line.id]?.productId} /></td>
                                     <td className="p-2">
                                          <SearchableSelect options={sourceShelvesForLine} value={line.sourceShelfId} onChange={val => handleLineChange(line.id, 'sourceShelfId', val)} placeholder={availableSourceShelves.length > 0 ? "Raf Seçin" : "Raf Bulunmuyor"} disabled={availableSourceShelves.length === 0} error={!!errors.lines?.[line.id]?.sourceShelfId}/>
                                     </td>

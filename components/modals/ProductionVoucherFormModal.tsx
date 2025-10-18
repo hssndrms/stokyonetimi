@@ -29,6 +29,81 @@ interface ProductionVoucherFormModalProps extends ModalComponentProps<{
     setModal: (modal: ModalState) => void;
 }
 
+const LineRow: React.FC<{
+    line: Line;
+    lineType: 'consumed' | 'produced';
+    onLineChange: (id: number | string, field: keyof Omit<Line, 'id'>, value: string) => void;
+    onRemove: (id: number | string) => void;
+    isRemovalDisabled: boolean;
+    availableShelves: Shelf[];
+    productGroups: ProductGroup[];
+    productOptionsWithSku: { id: string; name: string | undefined; }[];
+    products: Product[];
+    getProductSku: (productId: string) => string;
+    getUnitAbbrForProduct: (productId: string) => string;
+    showStock: boolean;
+    getStockInfo: (productId: string, warehouseId: string, shelfId: string) => string;
+    header: Header;
+    isEditMode: boolean;
+    shelves: Shelf[];
+    stockItems: StockItem[];
+    errors: any;
+}> = React.memo(({ 
+    line, lineType, onLineChange, onRemove, isRemovalDisabled, availableShelves, 
+    productGroups, productOptionsWithSku, products, getProductSku, getUnitAbbrForProduct, 
+    showStock, getStockInfo, header, isEditMode, shelves, stockItems, errors 
+}) => {
+    
+    const availableProductsForLine = useMemo(() => {
+        if (!line.productGroupId) return [];
+        const productIdsInGroup = new Set(products.filter(p => p.group_id === line.productGroupId).map(p => p.id));
+        return productOptionsWithSku.filter(p => productIdsInGroup.has(p.id));
+    }, [line.productGroupId, productOptionsWithSku, products]);
+    
+    const shelvesForLine = (() => {
+        if (lineType === 'produced') return availableShelves;
+        
+        // Tüketilen malzemeler için, sadece stoğu olan rafları göster
+        if (!line.productId || !header.sourceWarehouseId) return [];
+        
+        const shelfIdsWithStock = stockItems
+            .filter(si => si.product_id === line.productId && si.warehouse_id === header.sourceWarehouseId && si.quantity > 0 && si.shelf_id)
+            .map(si => si.shelf_id);
+        
+        const shelvesWithStock = shelves.filter(shelf => shelf.warehouse_id === header.sourceWarehouseId && shelfIdsWithStock.includes(shelf.id));
+
+        // Düzenleme modunda, stoğu bitmiş olsa bile önceden seçili rafı listeye ekle
+        if (isEditMode && line.shelfId && !shelvesWithStock.some(s => s.id === line.shelfId)) {
+            const savedShelf = findById(shelves, line.shelfId);
+            if (savedShelf && savedShelf.warehouse_id === header.sourceWarehouseId) {
+                return Array.from(new Set([...shelvesWithStock, savedShelf]));
+            }
+        }
+        
+        return shelvesWithStock;
+    })();
+
+    return (
+        <tr className="table-row border-t dark:border-slate-700">
+            <td className="p-2 w-[20%]"><SearchableSelect options={productGroups} value={line.productGroupId} onChange={val => onLineChange(line.id, 'productGroupId', val)} placeholder="Grup Seçin" /></td>
+            <td className="p-2 w-[15%] align-middle font-mono text-slate-600 dark:text-slate-400">{getProductSku(line.productId)}</td>
+            <td className="p-2 w-[20%]"><SearchableSelect options={availableProductsForLine} value={line.productId} onChange={val => onLineChange(line.id, 'productId', val)} placeholder="Ürün Seçin" disabled={!line.productGroupId} error={errors[lineType]?.[line.id]?.productId} /></td>
+            <td className="p-2 w-[15%]">
+                 <SearchableSelect options={shelvesForLine} value={line.shelfId} onChange={val => onLineChange(line.id, 'shelfId', val)} placeholder={availableShelves.length > 0 ? "Raf Seçin" : "Raf Bulunmuyor"} disabled={availableShelves.length === 0} error={errors[lineType]?.[line.id]?.shelfId}/>
+            </td>
+            <td className="p-2 w-[10%] text-slate-600 dark:text-slate-400 font-medium text-right align-middle">{getStockInfo(line.productId, lineType === 'consumed' ? header.sourceWarehouseId : header.destWarehouseId, line.shelfId)}</td>
+            <td className="p-2 w-[15%]">
+                 <div className="flex items-center">
+                    <input type="number" step="any" min="0.01" value={line.quantity} onChange={e => onLineChange(line.id, 'quantity', e.target.value)} className={`${formInputSmallClass} ${errors[lineType]?.[line.id]?.quantity ? 'border-red-500' : ''} w-full text-right`} />
+                    <span className="text-sm text-slate-500 dark:text-slate-400 font-medium pl-2 w-12 text-left">{getUnitAbbrForProduct(line.productId)}</span>
+                </div>
+            </td>
+            <td className="p-2 w-[5%] text-center"><button type="button" onClick={() => onRemove(line.id)} className="remove-line-button text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400 disabled:text-slate-300 dark:disabled:text-slate-600" disabled={isRemovalDisabled}><TrashIcon /></button></td>
+        </tr>
+    );
+});
+
+
 const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({ 
     isEdit, data, onClose, getNextVoucherNumber, shelves, products, warehouses, 
     productGroups, handleProcessProductionVoucher, handleEditProductionVoucher, stockMovements, 
@@ -98,6 +173,11 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
 
     const [availableSourceShelves, setAvailableSourceShelves] = useState<Shelf[]>([]);
     const [availableDestShelves, setAvailableDestShelves] = useState<Shelf[]>([]);
+
+    const productOptionsWithSku = useMemo(() => products.map(p => ({
+        id: p.id,
+        name: `${p.name} (${p.sku})`
+    })), [products]);
 
     const getUnitAbbrForProduct = (productId: string): string => {
         const product = findById(products, productId);
@@ -290,56 +370,19 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
         });
     };
 
-    const LineRow: React.FC<{
-        line: Line;
-        lineType: 'consumed' | 'produced';
-        onLineChange: (id: number | string, field: keyof Omit<Line, 'id'>, value: string) => void;
-        onRemove: (id: number | string) => void;
-        isRemovalDisabled: boolean;
-        availableShelves: Shelf[];
-    }> = ({ line, lineType, onLineChange, onRemove, isRemovalDisabled, availableShelves }) => {
-        
-        const shelvesForLine = (() => {
-            if (lineType === 'produced') return availableShelves;
-            
-            // Tüketilen malzemeler için, sadece stoğu olan rafları göster
-            if (!line.productId || !header.sourceWarehouseId) return [];
-            
-            const shelfIdsWithStock = stockItems
-                .filter(si => si.product_id === line.productId && si.warehouse_id === header.sourceWarehouseId && si.quantity > 0 && si.shelf_id)
-                .map(si => si.shelf_id);
-            
-            const shelvesWithStock = shelves.filter(shelf => shelf.warehouse_id === header.sourceWarehouseId && shelfIdsWithStock.includes(shelf.id));
-
-            // Düzenleme modunda, stoğu bitmiş olsa bile önceden seçili rafı listeye ekle
-            if (isEditMode && line.shelfId && !shelvesWithStock.some(s => s.id === line.shelfId)) {
-                const savedShelf = findById(shelves, line.shelfId);
-                if (savedShelf && savedShelf.warehouse_id === header.sourceWarehouseId) {
-                    return Array.from(new Set([...shelvesWithStock, savedShelf]));
-                }
-            }
-            
-            return shelvesWithStock;
-        })();
-
-        return (
-            <tr className="table-row border-t dark:border-slate-700">
-                <td className="p-2 w-[20%]"><SearchableSelect options={productGroups} value={line.productGroupId} onChange={val => onLineChange(line.id, 'productGroupId', val)} placeholder="Grup Seçin" /></td>
-                <td className="p-2 w-[15%]"><input type="text" value={getProductSku(line.productId)} className={`${formInputSmallClass} bg-slate-100 dark:bg-slate-700 font-mono`} readOnly /></td>
-                <td className="p-2 w-[20%]"><SearchableSelect options={line.productGroupId ? products.filter(p => p.group_id === line.productGroupId) : []} value={line.productId} onChange={val => onLineChange(line.id, 'productId', val)} placeholder="Ürün Seçin" disabled={!line.productGroupId} error={errors[lineType]?.[line.id]?.productId} /></td>
-                <td className="p-2 w-[15%]">
-                     <SearchableSelect options={shelvesForLine} value={line.shelfId} onChange={val => onLineChange(line.id, 'shelfId', val)} placeholder={availableShelves.length > 0 ? "Raf Seçin" : "Raf Bulunmuyor"} disabled={availableShelves.length === 0} error={errors[lineType]?.[line.id]?.shelfId}/>
-                </td>
-                <td className="p-2 w-[10%] text-slate-600 dark:text-slate-400 font-medium text-right">{getStockInfo(line.productId, lineType === 'consumed' ? header.sourceWarehouseId : header.destWarehouseId, line.shelfId)}</td>
-                <td className="p-2 w-[15%]">
-                     <div className="flex items-center">
-                        <input type="number" step="any" min="0.01" value={line.quantity} onChange={e => onLineChange(line.id, 'quantity', e.target.value)} className={`${formInputSmallClass} ${errors[lineType]?.[line.id]?.quantity ? 'border-red-500' : ''} w-full text-right`} />
-                        <span className="text-sm text-slate-500 dark:text-slate-400 font-medium pl-2 w-12 text-left">{getUnitAbbrForProduct(line.productId)}</span>
-                    </div>
-                </td>
-                <td className="p-2 w-[5%] text-center"><button type="button" onClick={() => onRemove(line.id)} className="remove-line-button text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400 disabled:text-slate-300 dark:disabled:text-slate-600" disabled={isRemovalDisabled}><TrashIcon /></button></td>
-            </tr>
-        );
+    const lineRowProps = {
+        productGroups,
+        productOptionsWithSku,
+        products,
+        getProductSku,
+        getUnitAbbrForProduct,
+        showStock,
+        getStockInfo,
+        header,
+        isEditMode,
+        shelves,
+        stockItems,
+        errors,
     };
 
     return (
@@ -368,7 +411,7 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
                                 </tr>
                             </thead>
                             <tbody className="table-body">{producedLines.map(line => (
-                                <LineRow key={line.id} line={line} lineType="produced" onLineChange={(id, field, value) => handleLineChange('produced', id, field, value)} onRemove={(id) => removeLine('produced', id)} isRemovalDisabled={producedLines.length <= 1} availableShelves={availableDestShelves} />
+                                <LineRow key={line.id} line={line} lineType="produced" onLineChange={(id, field, value) => handleLineChange('produced', id, field, value)} onRemove={(id) => removeLine('produced', id)} isRemovalDisabled={producedLines.length <= 1} availableShelves={availableDestShelves} {...lineRowProps} />
                             ))}</tbody>
                         </table>
                     </div>
@@ -392,7 +435,7 @@ const ProductionVoucherFormModal: React.FC<ProductionVoucherFormModalProps> = ({
                                 </tr>
                             </thead>
                             <tbody className="table-body">{consumedLines.map(line => (
-                                <LineRow key={line.id} line={line} lineType="consumed" onLineChange={(id, field, value) => handleLineChange('consumed', id, field, value)} onRemove={(id) => removeLine('consumed', id)} isRemovalDisabled={consumedLines.length <= 1} availableShelves={availableSourceShelves} />
+                                <LineRow key={line.id} line={line} lineType="consumed" onLineChange={(id, field, value) => handleLineChange('consumed', id, field, value)} onRemove={(id) => removeLine('consumed', id)} isRemovalDisabled={consumedLines.length <= 1} availableShelves={availableSourceShelves} {...lineRowProps} />
                             ))}</tbody>
                         </table>
                     </div>

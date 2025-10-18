@@ -101,6 +101,11 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
     const availableAccounts = useMemo(() => accounts.filter(a => a.type === accountType), [accountType, accounts]);
     const selectedAccount = useMemo(() => accounts.find(a => a.id === header.accountId), [header.accountId, accounts]);
     
+    const productOptionsWithSku = useMemo(() => products.map(p => ({
+        id: p.id,
+        name: `${p.name} (${p.sku})`
+    })), [products]);
+
     const getUnitAbbrForProduct = (productId: string): string => {
         const product = findById(products, productId);
         if (!product) return '';
@@ -407,7 +412,11 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
                         <tbody className="table-body">
                             {lines.map((line) => {
                                 const sku = getProductSku(line.productId);
-                                const availableProductsForLine = line.productGroupId ? products.filter(p => p.group_id === line.productGroupId) : [];
+                                const availableProductsForLine = useMemo(() => {
+                                    if (!line.productGroupId) return [];
+                                    const productIdsInGroup = new Set(products.filter(p => p.group_id === line.productGroupId).map(p => p.id));
+                                    return productOptionsWithSku.filter(p => productIdsInGroup.has(p.id));
+                                }, [line.productGroupId, productOptionsWithSku, products]);
                                 
                                 const shelvesForLine = (() => {
                                     if (voucherType === 'IN') return availableShelves;
@@ -434,7 +443,7 @@ const StockMovementFormModal: React.FC<StockMovementFormModalProps> = ({ isStock
                                 return (
                                     <tr key={line.id} className="table-row border-t dark:border-slate-700">
                                         <td className="table-cell p-2 align-middle"><SearchableSelect options={productGroups} value={line.productGroupId} onChange={val => handleLineChange(line.id, 'productGroupId', val)} placeholder="Grup Seçin" error={!!errors.lines?.[line.id]?.productGroupId} /></td>
-                                        <td className="table-cell p-2 align-middle"><input type="text" value={sku} className={`${formInputSmallClass} bg-slate-100 dark:bg-slate-700 font-mono`} readOnly aria-label="Ürün Kodu" /></td>
+                                        <td className="p-2 align-middle font-mono text-slate-600 dark:text-slate-400">{sku}</td>
                                         <td className="table-cell p-2 align-middle"><SearchableSelect options={availableProductsForLine} value={line.productId} onChange={val => handleLineChange(line.id, 'productId', val)} placeholder="Ürün Seçin" disabled={!line.productGroupId} error={!!errors.lines?.[line.id]?.productId} /></td>
                                         <td className="table-cell p-2 align-middle">
                                             <SearchableSelect
