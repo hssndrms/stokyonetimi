@@ -27,9 +27,6 @@
         "scope": [
           "$DOWNLOAD/*"
         ]
-        "scope": [
-          "$DOWNLOAD/*"
-        ]
       },
       "notification": {
         "all": true
