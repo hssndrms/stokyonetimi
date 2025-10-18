@@ -9,7 +9,7 @@
   "tauri": {
     "package": {
       "productName": "Stok Takip Uygulaması",
-      "version": "1.4.6"
+      "version": "1.4.7"
     },
     "allowlist": {
       "all": false,
@@ -31,7 +31,6 @@
       "notification": {
         "all": true
       },
-      "http": {
       "http": {
         "all": true,
         "scope": [
