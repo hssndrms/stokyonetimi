@@ -108,7 +108,7 @@ const Modal: React.FC<ModalProps> = ({ state, onClose, setModal, ...props }) => 
     const modalWidthClass = () => {
         if ([ 'STOCK_IN', 'STOCK_OUT', 'EDIT_STOCK_VOUCHER', 
               'STOCK_TRANSFER', 'EDIT_STOCK_TRANSFER', 
-              'ADD_PRODUCTION_VOUCHER', 'EDIT_PRODUCTION_VOUCHER' ].includes(type)) return 'max-w-6xl';
+              'ADD_PRODUCTION_VOUCHER', 'EDIT_PRODUCTION_VOUCHER' ].includes(type)) return 'max-w-7xl';
         if (type === 'CONFIRM_DELETE') return 'max-w-md';
         return 'max-w-lg';
     }
