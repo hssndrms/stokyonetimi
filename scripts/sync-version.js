@@ -1,5 +1,6 @@
 const { readFileSync, writeFileSync } = require('fs');
 const { resolve } = require('path');
+const { execSync } = require('child_process');
 
 try {
     // Get new version from package.json
@@ -25,6 +26,9 @@ try {
     tauriConf.package.version = newVersion;
     writeFileSync(tauriConfPath, JSON.stringify(tauriConf, null, 2) + '\n');
     console.log('✅ Updated src-tauri/tauri.conf.json');
+    // stage tauri config so npm's auto commit will include it
+    execSync(`git add ${tauriConfPath}`, { stdio: 'inherit' });
+    console.log('✅ Staged src-tauri/tauri.conf.json');
 
     // 2. Update Cargo.toml
     const cargoPath = resolve(process.cwd(), 'src-tauri/Cargo.toml');
@@ -41,6 +45,8 @@ try {
     );
     writeFileSync(cargoPath, cargoContent);
     console.log('✅ Updated src-tauri/Cargo.toml');
+    execSync(`git add ${cargoPath}`, { stdio: 'inherit' });
+    console.log('✅ Staged src-tauri/Cargo.toml');
 
     // 3. Update data/version.ts
     const versionTsPath = resolve(process.cwd(), 'data/version.ts');
@@ -57,6 +63,8 @@ try {
     );
     writeFileSync(versionTsPath, versionTsContent);
     console.log('✅ Updated data/version.ts');
+    execSync(`git add ${versionTsPath}`, { stdio: 'inherit' });
+    console.log('✅ Staged data/version.ts');
 
     console.log('✅ Version sync complete!');
     process.exit(0);
