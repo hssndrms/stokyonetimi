@@ -66,6 +66,10 @@
       "shortDescription": "",
       "targets": "all",
       "windows": {
+        "wix":{
+          "Language":"tr-tr",
+          "allowElevation": false
+        },
         "certificateThumbprint": null,
         "digestAlgorithm": "sha256",
         "timestampUrl": ""
