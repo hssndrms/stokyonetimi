@@ -1,0 +1,4 @@
+src-tauri/src/main.rs merge=ours
+src-tauri/tauri.conf.json merge=ours
+src-tauri/build.rs merge=ours
+src-tauri/Cargo.toml merge=ours
