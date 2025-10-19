@@ -1,7 +1,7 @@
 {
   "package": {
     "productName": "StokTakipUygulamasi",
-    "version": "1.5.0"
+    "version": "1.6.0"
   },
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -66,8 +66,8 @@
       "shortDescription": "",
       "targets": "all",
       "windows": {
-        "wix":{
-          "Language":"tr-tr",
+        "wix": {
+          "Language": "tr-tr",
           "allowElevation": false
         },
         "certificateThumbprint": null,
