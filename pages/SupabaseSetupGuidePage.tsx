@@ -85,10 +85,10 @@ const SupabaseSetupGuidePage: React.FC<{ onBack: () => void }> = ({ onBack }) =>
                             Son olarak, uygulamanın veritabanına bağlanabilmesi için gerekli olan iki bilgiyi almanız gerekiyor.
                         </p>
                         <ol className="list-decimal list-inside space-y-2">
-                           <li>Supabase projenizin sol menüsünden çark ikonuna sahip <b>Project Settings</b> bölümüne, ardından <b>API</b> sekmesine gidin.</li>
+                           <li>Supabase projenizin sol menüsünden çark ikonuna sahip <b>Project Settings</b> bölümüne, ardından <b>Data API</b> sekmesine gidin.</li>
                            <li>Bu sayfadaki <b>Project URL</b> değerini kopyalayın.</li>
-                           <li><b>Project API Keys</b> başlığı altındaki <b>anon</b> <code>public</code> anahtarını kopyalayın.</li>
-                           <li>Bu rehber sayfasından geri dönmek için aşağıdaki butonu kullanın ve kopyaladığınız bu iki bilgiyi ilgili alanlara yapıştırın.</li>
+                           <li><b>API Keys</b> sekmesi altındaki <b>anon public</b> anahtarını kopyalayın.</li>
+                           <li>Bu rehber sayfasından geri dönmek için aşağıdaki butonu kullanın ve kopyaladığınız bu iki bilgiyi ilgili alanlara yapıştırın. </li>
                         </ol>
                     </GuideStep>
                 </div>
