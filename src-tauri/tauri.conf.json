@@ -67,7 +67,7 @@
       "targets": "all",
       "windows": {
         "wix":{
-          "allowElebation": false
+          "allowElevation": false
         },
         "certificateThumbprint": null,
         "digestAlgorithm": "sha256",
