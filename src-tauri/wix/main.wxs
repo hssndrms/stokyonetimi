@@ -25,9 +25,34 @@
       <DirectoryRef Id="INSTALLFOLDER">
         <ComponentGroup Id="AppComponentGroup">
           <Component Id="MainExe" Guid="3F2504E0-4F89-11D3-9A0C-0305E82C3301">
-            <File Source="path\to\StokTakipUygulamasi.exe" />
+            <File Source="../target/release/bundle/msi/StokTakipUygulamasi.exe" />
           </Component>
+          
+          <!--Component Id="AppIcons" Guid="A1B2C3D4-E5F6-7890-1234-56789ABCDE01">
+            <File Source="../icons/32x32.png" />
+            <File Source="../icons/128x128.png" />
+            <File Source="../icons/128x128@2x.png" />
+            <File Source="../icons/icon.ico" />
+            <File Source="../icons/icon.icns" />
+          </Component-->
 
+          <!--Component Id="MainExeShortcut" Guid="B1C2D3E4-F5A6-7890-1234-56789ABCDE02">
+             
+            <Shortcut Id="DesktopShortcut"
+            Name="StokTakipUygulamasi"
+            Target="[INSTALLFOLDER]StokTakipUygulamasi.exe"
+            WorkingDirectory="INSTALLFOLDER"/>
+             
+            <RemoveFolder Id="DesktopFolder" On="uninstall"/>
+           
+            <RegistryValue Root="HKCU" 
+                          Key="Software\HasanDurmus\StokTakipUygulamasi" 
+                          Name="installed" 
+                          Type="integer" 
+                          Value="1" 
+                          KeyPath="yes"/>
+          </Component-->
+          
           <!-- Eğer başka dosyaların varsa buraya ekle -->
         </ComponentGroup>
       </DirectoryRef>
