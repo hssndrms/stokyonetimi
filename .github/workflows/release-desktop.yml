@@ -39,7 +39,17 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm install
-  
+
+      - name: Show debug info before build
+        run: |
+          echo "--- Current Directory Structure ---"
+          ls -R
+          echo "--- package.json content ---"
+          cat package.json
+          echo "--- src-tauri/tauri.conf.json content ---"
+          cat src-tauri/tauri.conf.json
+          echo "--- End of debug info ---"
+        
       - name: Build the app
         uses: tauri-apps/tauri-action@v0
         env:
@@ -47,7 +57,6 @@ jobs:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
-          tauriVersion: '1' # Tauri v1 CLI'yi kullanmaya zorla
           projectPath: "."
           includeRelease: true
           includeUpdaterJson: true
