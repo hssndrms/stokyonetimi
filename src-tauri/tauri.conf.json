@@ -66,12 +66,12 @@
       "shortDescription": "",
       "targets": "all",
       "windows": {
-        "wix":{
-          "allowElevation": false
-        },
         "certificateThumbprint": null,
         "digestAlgorithm": "sha256",
-        "timestampUrl": ""
+        "timestampUrl": "",
+        "wix": {
+          "perUser": true
+        }
       }
     },
     "security": {
