@@ -66,6 +66,9 @@
       "shortDescription": "",
       "targets": "all",
       "windows": {
+        "wix":{
+          "allowElebation": false
+        },
         "certificateThumbprint": null,
         "digestAlgorithm": "sha256",
         "timestampUrl": ""
