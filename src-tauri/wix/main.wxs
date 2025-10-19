@@ -27,6 +27,13 @@
           <Component Id="MainExe" Guid="3F2504E0-4F89-11D3-9A0C-0305E82C3301">
             <File Source="path\to\StokTakipUygulamasi.exe" />
           </Component>
+          <Component Id="AppIcons" Guid="A1B2C3D4-E5F6-7890-1234-56789ABCDE01">
+            <File Source="src-tauri\icons\32x32.png" />
+            <File Source="src-tauri\icons\128x128.png" />
+            <File Source="src-tauri\icons\128x128@2x.png" />
+            <File Source="src-tauri\icons\icon.ico" />
+            <File Source="src-tauri\icons\icon.icns" />
+          </Component>
           <!-- Eğer başka dosyaların varsa buraya ekle -->
         </ComponentGroup>
       </DirectoryRef>
