@@ -54,3 +54,25 @@ jobs:
           tagName: ${{ github.ref_name }} # v1.2.3
           releaseName: "Stok Takip Uygulaması ${{ github.ref_name }}"
           releaseBody: "Bu sürüm için kurulum dosyalarını aşağıdaki Assets bölümünden indirebilirsiniz."
+      # Yeni adım: EXE yolunu bul (Windows)
+      - name: Find EXE
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path src-tauri/target/release -Recurse -Filter StokTakipUygulamasi.exe | Select-Object -First 1
+          Write-Host "EXE_PATH=$($exe.FullName)" >> $env:GITHUB_ENV
+
+      # Yeni adım: WiX dosyasını güncelle
+      - name: Update WiX file with EXE path
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          (Get-Content src-tauri/wix/main.wxs) -replace '<File Source=".*StokTakipUygulamasi.exe" />', "<File Source='${env:EXE_PATH}' />" | Set-Content src-tauri/wix/main.wxs
+
+      # Yeni adım: WiX ile MSI oluştur
+      - name: Build MSI with WiX
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          # WiX’in yüklü olduğunu varsayıyoruz (tauri-action kendi indiriyor)
+          & candle.exe src-tauri/wix/main.wxs -o main.wixobj
