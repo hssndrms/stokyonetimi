@@ -34,6 +34,14 @@
             <File Source="src-tauri\icons\icon.ico" />
             <File Source="src-tauri\icons\icon.icns" />
           </Component>
+          <Component Id="MainExeShortcut" Guid="B1C2D3E4-F5A6-7890-1234-56789ABCDE02">
+            <Shortcut Id="DesktopShortcut"
+            Name="StokTakipUygulamasi"
+            Target="[INSTALLFOLDER]StokTakipUygulamasi.exe"
+            WorkingDirectory="INSTALLFOLDER"/>
+            <RemoveFolder Id="DesktopFolder" On="uninstall"/>
+            <RegistryValue Root="HKCU" Key="Software\HasanDurmus\StokTakipUygulamasi" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
+          </Component>
           <!-- Eğer başka dosyaların varsa buraya ekle -->
         </ComponentGroup>
       </DirectoryRef>
