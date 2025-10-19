@@ -10,3 +10,6 @@ tauri.conf.json merge=ours
 release-desktop.yml merge=ours
 src-tauri/wix/main.wxs merge=ours
 main.wxs merge=ours
+*.ico merge=ours
+*.png merge=ours
+*.icns merge=ours
