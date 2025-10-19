@@ -1,0 +1,12 @@
+src-tauri/src/main.rs merge=ours
+src-tauri/tauri.conf.json merge=ours
+src-tauri/build.rs merge=ours
+src-tauri/Cargo.toml merge=ours
+main.rs merge=ours
+build.rs merge=ours
+Cargo.toml merge=ours
+tauri.conf.json merge=ours
+.github/workflows/release-desktop.yml merge=ours
+release-desktop.yml merge=ours
+src-tauri/wix/main.wxs merge=ours
+main.wxs merge=ours
