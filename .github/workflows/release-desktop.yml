@@ -39,19 +39,9 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm install
-
-      - name: Show debug info before build
-        run: |
-          echo "--- Current Directory Structure ---"
-          ls -R
-          echo "--- package.json content ---"
-          cat package.json
-          echo "--- src-tauri/tauri.conf.json content ---"
-          cat src-tauri/tauri.conf.json
-          echo "--- End of debug info ---"
-        
+  
       - name: Build the app
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@beta
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
