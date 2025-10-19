@@ -1,0 +1,56 @@
+name: 'Publish Desktop App'
+
+on:
+  push:
+    tags:
+      - 'v*.*.*' # v1.2.3 gibi etiketlerde çalışır
+
+permissions:
+  contents: write
+
+jobs:
+  publish-tauri:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos-latest, windows-latest]
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-20.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
+        run: npm install
+  
+      - name: Build the app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+        with:
+          tauriVersion: '1' # Tauri v1 CLI'yi kullanmaya zorla
+          projectPath: "."
+          includeRelease: true
+          includeUpdaterJson: true
+          tagName: ${{ github.ref_name }} # v1.2.3
+          releaseName: "Stok Takip Uygulaması ${{ github.ref_name }}"
+          releaseBody: "Bu sürüm için kurulum dosyalarını aşağıdaki Assets bölümünden indirebilirsiniz."

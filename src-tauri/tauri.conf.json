@@ -70,7 +70,7 @@
         "digestAlgorithm": "sha256",
         "timestampUrl": "",
         "wix": {
-          "perUser": true
+          "template": "wix/main.wxs"
         }
       }
     },
