@@ -6,3 +6,5 @@ main.rs merge=ours
 build.rs merge=ours
 Cargo.toml merge=ours
 tauri.conf.json merge=ours
+.github/workflows/release-desktop.yml merge=ours
+release-desktop.yml merge=ours
