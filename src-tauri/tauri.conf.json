@@ -1,7 +1,7 @@
 {
   "package": {
     "productName": "StokTakipUygulamasi",
-    "version": "1.4.28"
+    "version": "1.7.1"
   },
   "build": {
     "beforeDevCommand": "npm run dev",
