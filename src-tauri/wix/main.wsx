@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <!-- 
+    WIX PER-USER INSTALLATION TEMPLATE
+    Yönetici izni istemeyen, sadece geçerli kullanıcı için kurulum yapar.
+  -->
+
+  <Product
+    Id="*"
+    Name="StokTakipUygulamasi"
+    Language="1055"
+    Version="1.6.2"
+    Manufacturer="Hasan Durmus"
+    UpgradeCode="74ffac95-51a7-413d-a97f-816469e3f8ac">
+
+    <!-- 💡 Bu satır kritik: yönetici izni istememesi için -->
+    <Package
+      InstallerVersion="500"
+      InstallPrivileges="limited"
+      InstallScope="perUser" />
+
+    <!-- MSI dosyasının imzası için gereken metadata -->
+    <Media Id="1" Cabinet="app.cab" EmbedCab="yes" />
+
+    <!-- Dosyaların yerleşeceği hedef dizin -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="LocalAppDataFolder">
+        <Directory Id="INSTALLFOLDER" Name="StokTakipUygulamasi" />
+      </Directory>
+    </Directory>
+
+    <!-- Özellik ve bileşen tanımları -->
+    <Feature Id="MainFeature" Title="Stok Takip Uygulaması" Level="1">
+      <ComponentGroupRef Id="AppComponentGroup" />
+    </Feature>
+  </Product>
+</Wix>

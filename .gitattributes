@@ -8,3 +8,5 @@ Cargo.toml merge=ours
 tauri.conf.json merge=ours
 .github/workflows/release-desktop.yml merge=ours
 release-desktop.yml merge=ours
+src-tauri/wix/main.wxs merge=ours
+main.wxs merge=ours

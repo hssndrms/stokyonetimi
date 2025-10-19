@@ -66,6 +66,28 @@ try {
     execSync(`git add ${versionTsPath}`, { stdio: 'inherit' });
     console.log('✅ Staged data/version.ts');
 
+    // 4. Update .wxs file (MSI version)
+const wsxPath = resolve(process.cwd(), 'src-tauri/wix/main.wxs');
+let wsxContent = readFileSync(wsxPath, 'utf-8');
+
+// Wix Version regex: Version="1.6.2"
+const wsxVersionRegex = /Version="[^"]+"/;
+
+if (!wsxVersionRegex.test(wsxContent)) {
+    throw new Error('Could not find Version field in main.wxs');
+}
+
+wsxContent = wsxContent.replace(
+    wsxVersionRegex,
+    `Version="${newVersion}"`
+);
+
+writeFileSync(wsxPath, wsxContent);
+console.log('✅ Updated src-tauri/wix/main.wxs');
+execSync(`git add ${wsxPath}`, { stdio: 'inherit' });
+console.log('✅ Staged src-tauri/wix/main.wxs');
+
+
     console.log('✅ Version sync complete!');
     process.exit(0);
 
