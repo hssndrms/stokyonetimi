@@ -1,6 +1,6 @@
 [package]
 name = "stok-takip-uygulamasi"
-version = "1.6.6"
+version = "1.6.7"
 description = "Stok Takip Uygulaması"
 authors = ["Hasan Durmuş <hasan.drms@gmail.com>"]
 license = ""
