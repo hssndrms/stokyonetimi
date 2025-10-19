@@ -8,7 +8,6 @@ import { SETUP_SQL } from '../data/setupSql';
 import { VERSION_UPDATES } from '../data/versionUpdates';
 import SupabaseSetupGuidePage from './SupabaseSetupGuidePage';
 
-
 const SetupPage: React.FC<{ onCheckAgain: () => void; reason: 'tables' | 'config' | null; onClose?: () => void; loading: boolean; }> = ({ onCheckAgain, reason, onClose, loading }) => {
     const { addToast } = useToast();
     const [activeTab, setActiveTab] = useState<'setup' | 'updates'>('setup');

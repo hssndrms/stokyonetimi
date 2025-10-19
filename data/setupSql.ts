@@ -1,5 +1,7 @@
-export const SETUP_SQL = `
--- Stok Takip Uygulaması Kurulum Betiği v1.4.6
+import { VERSION } from './version';
+
+const rawSql = `
+-- Stok Takip Uygulaması Kurulum Betiği {CurrentVersion}
 -- Bu betik, uygulamanın ihtiyaç duyduğu tüm tabloları, fonksiyonları ve güvenlik kurallarını oluşturur.
 -- Supabase projenizdeki SQL Editor'e yapıştırıp çalıştırın.
 
@@ -714,3 +716,5 @@ BEGIN
 END;
 $$;
 `;
+
+export const SETUP_SQL = rawSql.replace('{CurrentVersion}', `v${VERSION}`);
